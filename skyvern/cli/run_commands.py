@@ -2,20 +2,19 @@ import asyncio
 import json
 import logging
 import os
-import shutil
 import subprocess
 from typing import Any, List, Optional
 
 import psutil
 import typer
 import uvicorn
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from rich.panel import Panel
 from rich.prompt import Confirm
 
 from skyvern.cli.console import console
-from skyvern.cli.utils import start_services
+from skyvern.cli.utils import start_services, sync_frontend_api_key
 from skyvern.client import SkyvernEnvironment
 from skyvern.config import settings
 from skyvern.forge.sdk.core import skyvern_context
@@ -133,23 +132,10 @@ def run_ui() -> None:
         console.print("[bold red]ERROR: Skyvern Frontend directory not found.[/bold red]")
         return
 
+    # Sync API key from backend to frontend
+    sync_frontend_api_key()
+
     frontend_dir = frontend_env_path.parent
-    if not frontend_env_path.exists():
-        console.print("[bold blue]Setting up frontend .env file...[/bold blue]")
-        shutil.copy(frontend_dir / ".env.example", frontend_env_path)
-        console.print("✅ [green]Successfully set up frontend .env file[/green]")
-
-    backend_env_path = resolve_backend_env_path()
-    if backend_env_path.exists():
-        load_dotenv(backend_env_path)
-        skyvern_api_key = os.getenv("SKYVERN_API_KEY")
-        if skyvern_api_key:
-            set_key(frontend_env_path, "VITE_SKYVERN_API_KEY", skyvern_api_key)
-        else:
-            console.print("[red]ERROR: SKYVERN_API_KEY not found in .env file[/red]")
-    else:
-        console.print(f"[red]ERROR: Backend .env file not found at {backend_env_path}[/red]")
-
     os.chdir(frontend_dir)
 
     try:

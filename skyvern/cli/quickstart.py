@@ -10,7 +10,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 # Import console after skyvern.cli to ensure proper initialization
 from skyvern.cli.console import console
 from skyvern.cli.init_command import init_env  # init is used directly
-from skyvern.cli.utils import start_services
+from skyvern.cli.utils import start_services, sync_frontend_api_key
 
 quickstart_app = typer.Typer(help="Quickstart command to set up and run Skyvern with one command.")
 
@@ -74,6 +74,10 @@ def quickstart(
                     console.print(f"[yellow]Warning: Failed to install Chromium: {e.stderr}[/yellow]")
         else:
             console.print("⏭️ [yellow]Skipping Chromium installation as requested.[/yellow]")
+
+        # Sync API key from backend to frontend
+        if run_local:
+            sync_frontend_api_key()
 
         # Start services
         if run_local:
