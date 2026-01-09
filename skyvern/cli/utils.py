@@ -55,7 +55,6 @@ async def start_services(server_only: bool = False) -> None:
     Args:
         server_only: If True, only start the server, not the UI.
     """
-    # Sync API key from backend to frontend before starting services
     if not server_only:
         sync_frontend_api_key()
 

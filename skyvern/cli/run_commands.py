@@ -132,7 +132,6 @@ def run_ui() -> None:
         console.print("[bold red]ERROR: Skyvern Frontend directory not found.[/bold red]")
         return
 
-    # Sync API key from backend to frontend
     sync_frontend_api_key()
 
     frontend_dir = frontend_env_path.parent

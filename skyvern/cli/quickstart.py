@@ -75,7 +75,6 @@ def quickstart(
         else:
             console.print("⏭️ [yellow]Skipping Chromium installation as requested.[/yellow]")
 
-        # Sync API key from backend to frontend
         if run_local:
             sync_frontend_api_key()
 
