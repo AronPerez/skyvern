@@ -624,3 +624,57 @@ export type PylonEmailHash = {
 };
 
 export const BROWSER_DOWNLOAD_TIMEOUT_SECONDS = 120 as const;
+
+// Feedback types
+export const FeedbackValue = {
+  ThumbsUp: "thumbs_up",
+  ThumbsDown: "thumbs_down",
+} as const;
+
+export type FeedbackValue = (typeof FeedbackValue)[keyof typeof FeedbackValue];
+
+export const FeedbackCategory = {
+  WrongElement: "wrong_element",
+  MissedStep: "missed_step",
+  WrongData: "wrong_data",
+  GotStuck: "got_stuck",
+  WrongPage: "wrong_page",
+  PartialCompletion: "partial_completion",
+  CaptchaIssue: "captcha_issue",
+  LoginIssue: "login_issue",
+  Other: "other",
+} as const;
+
+export type FeedbackCategory =
+  (typeof FeedbackCategory)[keyof typeof FeedbackCategory];
+
+export const FeedbackCategoryLabels: Record<FeedbackCategory, string> = {
+  [FeedbackCategory.WrongElement]: "Clicked/interacted with wrong element",
+  [FeedbackCategory.MissedStep]: "Missed a required step",
+  [FeedbackCategory.WrongData]: "Entered incorrect data",
+  [FeedbackCategory.GotStuck]: "Got stuck or timed out",
+  [FeedbackCategory.WrongPage]: "Navigated to wrong page",
+  [FeedbackCategory.PartialCompletion]: "Only partially completed the task",
+  [FeedbackCategory.CaptchaIssue]: "Failed on CAPTCHA",
+  [FeedbackCategory.LoginIssue]: "Failed during login",
+  [FeedbackCategory.Other]: "Other (please describe)",
+};
+
+export type RunFeedbackRequest = {
+  feedback_value: FeedbackValue;
+  categories?: FeedbackCategory[];
+  comment?: string;
+};
+
+export type RunFeedbackResponse = {
+  feedback_id: string;
+  organization_id: string;
+  workflow_run_id: string | null;
+  task_id: string | null;
+  feedback_value: number; // 1 = thumbs up, -1 = thumbs down
+  categories: string[] | null;
+  comment: string | null;
+  created_by_user_id: string | null;
+  created_at: string;
+  modified_at: string;
+};
