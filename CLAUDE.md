@@ -61,7 +61,7 @@ Skyvern is a browser automation platform that uses LLMs and computer vision to i
 
 ### Multi-LLM Architecture
 
-Skyvern uses specialized LLM handlers for different purposes (configured in `skyvern/forge/app.py`):
+Skyvern uses specialized LLM handlers for different purposes (configured in `skyvern/forge/forge_app.py`):
 
 - **LLM_API_HANDLER**: Main reasoning and action planning
 - **SELECT_AGENT_LLM_API_HANDLER**: Element selection on web pages
