@@ -105,7 +105,10 @@ async def send_totp_code(
         if not task:
             raise HTTPException(status_code=400, detail=f"Invalid task id: {data.task_id}")
     if data.workflow_id:
-        workflow = await app.DATABASE.get_workflow(data.workflow_id, curr_org.organization_id)
+        if data.workflow_id.startswith("wpid_"):
+            workflow = await app.DATABASE.get_workflow_by_permanent_id(data.workflow_id, curr_org.organization_id)
+        else:
+            workflow = await app.DATABASE.get_workflow(data.workflow_id, curr_org.organization_id)
         if not workflow:
             raise HTTPException(status_code=400, detail=f"Invalid workflow id: {data.workflow_id}")
     if data.workflow_run_id:

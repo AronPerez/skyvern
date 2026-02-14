@@ -2,8 +2,9 @@ import { useEffect, useState, useMemo } from "react";
 import { LockClosedIcon, ClockIcon } from "@radix-ui/react-icons";
 import { PushTotpCodeForm } from "@/components/PushTotpCodeForm";
 import { statusIsFinalized } from "@/routes/tasks/types";
-import { useWorkflowRunWithWorkflowQuery } from "../hooks/useWorkflowRunWithWorkflowQuery";
+import { useTaskQuery } from "./hooks/useTaskQuery";
 import { useQueryClient } from "@tanstack/react-query";
+import { useFirstParam } from "@/hooks/useFirstParam";
 
 // Default polling timeout in minutes (matches backend VERIFICATION_CODE_POLLING_TIMEOUT_MINS)
 const VERIFICATION_CODE_TIMEOUT_MINS = 15;
@@ -15,21 +16,18 @@ function formatTimeRemaining(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function WorkflowRunVerificationCodeForm() {
+function TaskRunVerificationCodeForm() {
   const queryClient = useQueryClient();
-  const { data: workflowRun } = useWorkflowRunWithWorkflowQuery();
+  const taskId = useFirstParam("taskId", "runId");
+  const { data: task } = useTaskQuery({ id: taskId ?? undefined });
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [hasNotified, setHasNotified] = useState(false);
 
-  const isRunFinalized = workflowRun ? statusIsFinalized(workflowRun) : false;
+  const isTaskFinalized = task ? statusIsFinalized(task) : false;
   const isWaitingForCode =
-    !isRunFinalized && (workflowRun?.waiting_for_verification_code ?? false);
-  const verificationCodeIdentifier =
-    workflowRun?.verification_code_identifier ?? null;
-  const pollingStartedAt = workflowRun?.verification_code_polling_started_at;
-  const workflowRunId = workflowRun?.workflow_run_id;
-  const workflowId = workflowRun?.workflow?.workflow_permanent_id;
-  const workflowTitle = workflowRun?.workflow?.title;
+    !isTaskFinalized && (task?.waiting_for_verification_code ?? false);
+  const verificationCodeIdentifier = task?.verification_code_identifier ?? null;
+  const pollingStartedAt = task?.verification_code_polling_started_at;
 
   // Calculate initial time remaining and update every second
   useEffect(() => {
@@ -73,9 +71,9 @@ function WorkflowRunVerificationCodeForm() {
     if (Notification.permission === "granted") {
       try {
         const notification = new Notification("2FA Code Required", {
-          body: `Workflow "${workflowTitle ?? "Run"}" needs a verification code to continue.`,
+          body: `Task "${taskId}" needs a verification code to continue.`,
           icon: "/favicon.png",
-          tag: `2fa-required-${workflowRunId}`,
+          tag: `2fa-required-${taskId}`,
           requireInteraction: true,
         });
 
@@ -99,12 +97,12 @@ function WorkflowRunVerificationCodeForm() {
     } catch (error) {
       console.error("Failed to create audio:", error);
     }
-  }, [isWaitingForCode, hasNotified, workflowRunId, workflowTitle]);
+  }, [isWaitingForCode, hasNotified, taskId]);
 
   const handleSuccess = () => {
-    // Invalidate the query to refresh the workflow run status
+    // Invalidate the query to refresh the task status
     queryClient.invalidateQueries({
-      queryKey: ["workflowRun"],
+      queryKey: ["task"],
     });
   };
 
@@ -143,27 +141,26 @@ function WorkflowRunVerificationCodeForm() {
       </div>
 
       <p className="text-sm text-slate-300">
-        This workflow is waiting for a 2FA verification code. Enter the code you
+        This task is waiting for a 2FA verification code. Enter the code you
         received (6-digit code or magic link URL) to continue the run.
       </p>
 
       <PushTotpCodeForm
         className="mt-4"
         defaultIdentifier={verificationCodeIdentifier}
-        defaultWorkflowRunId={workflowRunId}
-        defaultWorkflowId={workflowId}
+        defaultTaskId={taskId}
         showAdvancedFields={false}
         onSuccess={handleSuccess}
       />
 
       {timeRemaining !== null && timeRemaining <= 0 && (
         <div className="rounded-md bg-red-500/20 p-3 text-sm text-red-300">
-          The verification code polling has timed out. The workflow run may have
-          failed. Please check the status.
+          The verification code polling has timed out. The task may have failed.
+          Please check the status.
         </div>
       )}
     </div>
   );
 }
 
-export { WorkflowRunVerificationCodeForm };
+export { TaskRunVerificationCodeForm };

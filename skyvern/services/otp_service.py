@@ -82,10 +82,9 @@ async def poll_otp_value(
     )
 
     # Set the waiting state in the database when polling starts
+    identifier_for_ui = totp_identifier
     if workflow_run_id:
         try:
-            # Determine the identifier to show in the UI
-            identifier_for_ui = totp_identifier
             await app.DATABASE.update_workflow_run(
                 workflow_run_id=workflow_run_id,
                 waiting_for_verification_code=True,
@@ -98,7 +97,23 @@ async def poll_otp_value(
                 verification_code_identifier=identifier_for_ui,
             )
         except Exception:
-            LOG.warning("Failed to set 2FA waiting state", exc_info=True)
+            LOG.warning("Failed to set 2FA waiting state for workflow run", exc_info=True)
+    elif task_id:
+        try:
+            await app.DATABASE.update_task_2fa_state(
+                task_id=task_id,
+                organization_id=organization_id,
+                waiting_for_verification_code=True,
+                verification_code_identifier=identifier_for_ui,
+                verification_code_polling_started_at=start_datetime,
+            )
+            LOG.info(
+                "Set 2FA waiting state for task",
+                task_id=task_id,
+                verification_code_identifier=identifier_for_ui,
+            )
+        except Exception:
+            LOG.warning("Failed to set 2FA waiting state for task", exc_info=True)
 
     try:
         while True:
@@ -143,7 +158,17 @@ async def poll_otp_value(
                 )
                 LOG.info("Cleared 2FA waiting state for workflow run", workflow_run_id=workflow_run_id)
             except Exception:
-                LOG.warning("Failed to clear 2FA waiting state", exc_info=True)
+                LOG.warning("Failed to clear 2FA waiting state for workflow run", exc_info=True)
+        elif task_id:
+            try:
+                await app.DATABASE.update_task_2fa_state(
+                    task_id=task_id,
+                    organization_id=organization_id,
+                    waiting_for_verification_code=False,
+                )
+                LOG.info("Cleared 2FA waiting state for task", task_id=task_id)
+            except Exception:
+                LOG.warning("Failed to clear 2FA waiting state for task", exc_info=True)
 
 
 async def _get_otp_value_from_url(

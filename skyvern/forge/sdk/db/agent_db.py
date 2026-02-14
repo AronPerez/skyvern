@@ -849,6 +849,42 @@ class AgentDB(BaseAlchemyDB):
             LOG.error("UnexpectedError", exc_info=True)
             raise
 
+    async def update_task_2fa_state(
+        self,
+        task_id: str,
+        organization_id: str,
+        waiting_for_verification_code: bool,
+        verification_code_identifier: str | None = None,
+        verification_code_polling_started_at: datetime | None = None,
+    ) -> Task:
+        """Update task 2FA verification code waiting state."""
+        try:
+            async with self.Session() as session:
+                if task := (
+                    await session.scalars(
+                        select(TaskModel).filter_by(task_id=task_id).filter_by(organization_id=organization_id)
+                    )
+                ).first():
+                    task.waiting_for_verification_code = waiting_for_verification_code
+                    if verification_code_identifier is not None:
+                        task.verification_code_identifier = verification_code_identifier
+                    if verification_code_polling_started_at is not None:
+                        task.verification_code_polling_started_at = verification_code_polling_started_at
+                    if not waiting_for_verification_code:
+                        # Clear identifiers when no longer waiting
+                        task.verification_code_identifier = None
+                        task.verification_code_polling_started_at = None
+                    await session.commit()
+                    updated_task = await self.get_task(task_id, organization_id=organization_id)
+                    if not updated_task:
+                        raise NotFoundError("Task not found")
+                    return updated_task
+                else:
+                    raise NotFoundError("Task not found")
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError", exc_info=True)
+            raise
+
     async def bulk_update_tasks(
         self,
         task_ids: list[str],

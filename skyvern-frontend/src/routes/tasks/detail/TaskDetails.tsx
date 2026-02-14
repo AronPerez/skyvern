@@ -41,6 +41,7 @@ import { MAX_STEPS_DEFAULT } from "../constants";
 import { useTaskQuery } from "./hooks/useTaskQuery";
 import { useFirstParam } from "@/hooks/useFirstParam";
 import * as env from "@/util/env";
+import { TaskRunVerificationCodeForm } from "./TaskRunVerificationCodeForm";
 
 function createTaskRequestObject(values: TaskApiResponse) {
   return {
@@ -326,6 +327,8 @@ function TaskDetails() {
           {webhookFailureReason}
         </>
       )}
+      {/* 2FA Verification Code Form - shown when task is waiting for a code */}
+      <TaskRunVerificationCodeForm />
       <SwitchBarNavigation
         options={[
           {
