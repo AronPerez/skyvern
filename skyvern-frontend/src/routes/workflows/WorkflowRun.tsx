@@ -449,6 +449,8 @@ function WorkflowRun() {
           </div>
         </header>
       )}
+      {/* 2FA Verification Code Form - shown when workflow is waiting for a code */}
+      <WorkflowRunVerificationCodeForm />
       {showOutputSection && (
         <div
           className={cn("grid gap-4 rounded-lg bg-slate-elevation1 p-4", {
@@ -504,8 +506,6 @@ function WorkflowRun() {
           {webhookFailureReason}
         </div>
       )}
-      {/* 2FA Verification Code Form - shown when workflow is waiting for a code */}
-      <WorkflowRunVerificationCodeForm />
       {workflowFailureReason}
       {!isEmbedded && (
         <div className="flex items-center justify-between">

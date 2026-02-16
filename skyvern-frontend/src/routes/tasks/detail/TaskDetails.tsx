@@ -317,6 +317,8 @@ function TaskDetails() {
           )}
         </div>
       </header>
+      {/* 2FA Verification Code Form - shown when task is waiting for a code */}
+      <TaskRunVerificationCodeForm />
 
       {taskIsLoading ? (
         <Skeleton className="h-32 w-full" />
@@ -327,8 +329,6 @@ function TaskDetails() {
           {webhookFailureReason}
         </>
       )}
-      {/* 2FA Verification Code Form - shown when task is waiting for a code */}
-      <TaskRunVerificationCodeForm />
       <SwitchBarNavigation
         options={[
           {
