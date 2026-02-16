@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
 from skyvern.services.otp_service import _get_otp_value_by_run, poll_otp_value
 
@@ -94,3 +95,63 @@ async def test_poll_otp_value_without_identifier_uses_run_lookup():
         )
     assert result is not None
     assert result.value == "123456"
+
+
+# === Task 6: Integration test — handle_potential_OTP_actions without TOTP config ===
+
+
+@pytest.mark.asyncio
+async def test_handle_potential_OTP_actions_without_totp_config():
+    """When LLM detects 2FA but no TOTP config exists, should still enter verification flow."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+
+    task = MagicMock()
+    task.organization_id = "org_1"
+    task.totp_verification_url = None
+    task.totp_identifier = None
+    task.task_id = "tsk_1"
+    task.workflow_run_id = None
+
+    step = MagicMock()
+    scraped_page = MagicMock()
+    browser_state = MagicMock()
+
+    json_response = {
+        "should_enter_verification_code": True,
+        "place_to_enter_verification_code": "input#otp-code",
+        "actions": [],
+    }
+
+    with patch.object(agent, "handle_potential_verification_code", new_callable=AsyncMock) as mock_handler:
+        mock_handler.return_value = {"actions": []}
+        with patch("skyvern.forge.agent.parse_actions", return_value=[]):
+            result_json, result_actions = await agent.handle_potential_OTP_actions(
+                task, step, scraped_page, browser_state, json_response
+            )
+        mock_handler.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_potential_OTP_actions_skips_magic_link_without_totp_config():
+    """Magic links should still require TOTP config."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+
+    task = MagicMock()
+    task.organization_id = "org_1"
+    task.totp_verification_url = None
+    task.totp_identifier = None
+
+    step = MagicMock()
+    scraped_page = MagicMock()
+    browser_state = MagicMock()
+
+    json_response = {
+        "should_verify_by_magic_link": True,
+    }
+
+    with patch.object(agent, "handle_potential_magic_link", new_callable=AsyncMock) as mock_handler:
+        result_json, result_actions = await agent.handle_potential_OTP_actions(
+            task, step, scraped_page, browser_state, json_response
+        )
+        mock_handler.assert_not_called()
+    assert result_actions == []
