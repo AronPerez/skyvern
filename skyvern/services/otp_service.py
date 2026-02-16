@@ -232,6 +232,28 @@ async def _get_otp_value_from_url(
     return otp_value
 
 
+async def _get_otp_value_by_run(
+    organization_id: str,
+    task_id: str | None = None,
+    workflow_run_id: str | None = None,
+) -> OTPValue | None:
+    """Look up OTP codes by task_id/workflow_run_id when no totp_identifier is configured.
+
+    Used for the manual 2FA input flow where users submit codes through the UI
+    without pre-configured TOTP credentials.
+    """
+    codes = await app.DATABASE.get_otp_codes_by_run(
+        organization_id=organization_id,
+        task_id=task_id,
+        workflow_run_id=workflow_run_id,
+        limit=1,
+    )
+    if codes:
+        code = codes[0]
+        return OTPValue(value=code.code, type=code.otp_type)
+    return None
+
+
 async def _get_otp_value_from_db(
     organization_id: str,
     totp_identifier: str,
