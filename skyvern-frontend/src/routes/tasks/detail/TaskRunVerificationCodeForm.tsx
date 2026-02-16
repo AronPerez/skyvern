@@ -1,165 +1,28 @@
-import { useEffect, useState, useMemo } from "react";
-import { LockClosedIcon, ClockIcon } from "@radix-ui/react-icons";
-import { PushTotpCodeForm } from "@/components/PushTotpCodeForm";
+import { VerificationCodeBanner } from "@/components/VerificationCodeBanner";
 import { statusIsFinalized } from "@/routes/tasks/types";
 import { useTaskQuery } from "./hooks/useTaskQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFirstParam } from "@/hooks/useFirstParam";
 
-// Default polling timeout in minutes (matches backend VERIFICATION_CODE_POLLING_TIMEOUT_MINS)
-const VERIFICATION_CODE_TIMEOUT_MINS = 15;
-
-function formatTimeRemaining(seconds: number): string {
-  if (seconds <= 0) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 function TaskRunVerificationCodeForm() {
   const queryClient = useQueryClient();
   const taskId = useFirstParam("taskId", "runId");
   const { data: task } = useTaskQuery({ id: taskId ?? undefined });
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const [hasNotified, setHasNotified] = useState(false);
 
   const isTaskFinalized = task ? statusIsFinalized(task) : false;
   const isWaitingForCode =
     !isTaskFinalized && (task?.waiting_for_verification_code ?? false);
-  const verificationCodeIdentifier = task?.verification_code_identifier ?? null;
-  const pollingStartedAt = task?.verification_code_polling_started_at;
-
-  // Calculate initial time remaining and update every second
-  useEffect(() => {
-    if (!isWaitingForCode || !pollingStartedAt) {
-      setTimeRemaining(null);
-      setHasNotified(false);
-      return;
-    }
-
-    const startTime = new Date(pollingStartedAt).getTime();
-    const timeoutMs = VERIFICATION_CODE_TIMEOUT_MINS * 60 * 1000;
-
-    const updateTimer = () => {
-      const now = Date.now();
-      const elapsed = now - startTime;
-      const remaining = Math.max(0, Math.ceil((timeoutMs - elapsed) / 1000));
-      setTimeRemaining(remaining);
-    };
-
-    // Initial update
-    updateTimer();
-
-    // Update every second
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [isWaitingForCode, pollingStartedAt]);
-
-  // Send browser notification when 2FA is needed
-  useEffect(() => {
-    if (!isWaitingForCode || hasNotified) {
-      return;
-    }
-
-    // Request notification permission if not already granted
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
-    // Show notification if permission is granted
-    if (Notification.permission === "granted") {
-      try {
-        const notification = new Notification("2FA Code Required", {
-          body: `Task "${taskId}" needs a verification code to continue.`,
-          icon: "/favicon.png",
-          tag: `2fa-required-${taskId}`,
-          requireInteraction: true,
-        });
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
-
-        setHasNotified(true);
-      } catch (error) {
-        console.error("Failed to create notification:", error);
-      }
-    }
-
-    // Play notification sound
-    try {
-      const audio = new Audio("/dragon-cry.mp3");
-      audio.play().catch((error) => {
-        console.error("Failed to play notification sound:", error);
-      });
-    } catch (error) {
-      console.error("Failed to create audio:", error);
-    }
-  }, [isWaitingForCode, hasNotified, taskId]);
-
-  const handleSuccess = () => {
-    // Invalidate the query to refresh the task status
-    queryClient.invalidateQueries({
-      queryKey: ["task"],
-    });
-  };
-
-  const isTimeCritical = useMemo(() => {
-    return timeRemaining !== null && timeRemaining <= 60;
-  }, [timeRemaining]);
-
-  if (!isWaitingForCode) {
-    return null;
-  }
 
   return (
-    <div className="space-y-4 rounded-lg border border-amber-500/50 bg-amber-500/10 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <LockClosedIcon className="h-5 w-5 text-amber-400" />
-          <h3 className="font-semibold text-amber-200">
-            2FA Verification Required
-          </h3>
-        </div>
-        {timeRemaining !== null && (
-          <div
-            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium ${
-              isTimeCritical
-                ? "bg-red-500/20 text-red-300"
-                : "bg-slate-700/50 text-slate-300"
-            }`}
-          >
-            <ClockIcon className="h-4 w-4" />
-            <span>
-              {formatTimeRemaining(timeRemaining)}
-              {isTimeCritical && " remaining"}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <p className="text-sm text-slate-300">
-        This task is waiting for a 2FA verification code. Enter the code you
-        received (6-digit code or magic link URL) to continue the run.
-      </p>
-
-      <PushTotpCodeForm
-        className="mt-4"
-        defaultIdentifier={verificationCodeIdentifier}
-        defaultTaskId={taskId}
-        showAdvancedFields={false}
-        onSuccess={handleSuccess}
-      />
-
-      {timeRemaining !== null && timeRemaining <= 0 && (
-        <div className="rounded-md bg-red-500/20 p-3 text-sm text-red-300">
-          The verification code polling has timed out. The task may have failed.
-          Please check the status.
-        </div>
-      )}
-    </div>
+    <VerificationCodeBanner
+      isWaitingForCode={isWaitingForCode}
+      pollingStartedAt={task?.verification_code_polling_started_at ?? null}
+      label={`Task "${taskId}"`}
+      notificationTag={`2fa-required-${taskId}`}
+      defaultIdentifier={task?.verification_code_identifier ?? null}
+      defaultTaskId={taskId}
+      onCodeSent={() => queryClient.invalidateQueries({ queryKey: ["task"] })}
+    />
   );
 }
 
