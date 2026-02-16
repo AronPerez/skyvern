@@ -2517,7 +2517,7 @@ class ForgeAgent:
                 step,
                 browser_state,
                 scraped_page,
-                verification_code_check=bool(task.totp_verification_url or task.totp_identifier),
+                verification_code_check=True,
                 expire_verification_code=True,
             )
 
@@ -4419,6 +4419,7 @@ class ForgeAgent:
         place_to_enter_verification_code = json_response.get("place_to_enter_verification_code")
         should_enter_verification_code = json_response.get("should_enter_verification_code")
 
+        # If no OTP verification needed, return early to avoid unnecessary processing
         if (
             not should_verify_by_magic_link
             and not place_to_enter_verification_code

@@ -6,6 +6,7 @@ import pytest
 
 from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
+from skyvern.schemas.runs import RunEngine
 from skyvern.services.otp_service import _get_otp_value_by_run, poll_otp_value
 
 
@@ -155,3 +156,92 @@ async def test_handle_potential_OTP_actions_skips_magic_link_without_totp_config
         )
         mock_handler.assert_not_called()
     assert result_actions == []
+
+
+# === Task 7: verification_code_check always True in LLM prompt ===
+
+
+@pytest.mark.asyncio
+async def test_verification_code_check_always_true_without_totp_config():
+    """_build_extract_action_prompt should receive verification_code_check=True even when task has no TOTP config."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+    agent.async_operation_pool = MagicMock()
+
+    task = MagicMock()
+    task.totp_verification_url = None
+    task.totp_identifier = None
+    task.task_id = "tsk_1"
+    task.workflow_run_id = None
+    task.organization_id = "org_1"
+    task.url = "https://example.com"
+
+    step = MagicMock()
+    step.step_id = "step_1"
+    step.order = 0
+    step.retry_index = 0
+
+    scraped_page = MagicMock()
+    scraped_page.elements = []
+
+    browser_state = MagicMock()
+
+    with (
+        patch("skyvern.forge.agent.skyvern_context") as mock_ctx,
+        patch.object(agent, "_scrape_with_type", new_callable=AsyncMock, return_value=scraped_page),
+        patch.object(
+            agent,
+            "_build_extract_action_prompt",
+            new_callable=AsyncMock,
+            return_value=("prompt", False, "extract_action"),
+        ) as mock_build,
+    ):
+        mock_ctx.current.return_value = None
+        await agent.build_and_record_step_prompt(
+            task, step, browser_state, RunEngine.skyvern_v1, persist_artifacts=False
+        )
+        mock_build.assert_called_once()
+        _, kwargs = mock_build.call_args
+        assert kwargs["verification_code_check"] is True
+
+
+@pytest.mark.asyncio
+async def test_verification_code_check_always_true_with_totp_config():
+    """_build_extract_action_prompt should receive verification_code_check=True when task HAS TOTP config (unchanged)."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+    agent.async_operation_pool = MagicMock()
+
+    task = MagicMock()
+    task.totp_verification_url = "https://otp.example.com"
+    task.totp_identifier = "user@example.com"
+    task.task_id = "tsk_2"
+    task.workflow_run_id = None
+    task.organization_id = "org_1"
+    task.url = "https://example.com"
+
+    step = MagicMock()
+    step.step_id = "step_1"
+    step.order = 0
+    step.retry_index = 0
+
+    scraped_page = MagicMock()
+    scraped_page.elements = []
+
+    browser_state = MagicMock()
+
+    with (
+        patch("skyvern.forge.agent.skyvern_context") as mock_ctx,
+        patch.object(agent, "_scrape_with_type", new_callable=AsyncMock, return_value=scraped_page),
+        patch.object(
+            agent,
+            "_build_extract_action_prompt",
+            new_callable=AsyncMock,
+            return_value=("prompt", False, "extract_action"),
+        ) as mock_build,
+    ):
+        mock_ctx.current.return_value = None
+        await agent.build_and_record_step_prompt(
+            task, step, browser_state, RunEngine.skyvern_v1, persist_artifacts=False
+        )
+        mock_build.assert_called_once()
+        _, kwargs = mock_build.call_args
+        assert kwargs["verification_code_check"] is True
