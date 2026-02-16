@@ -3952,6 +3952,35 @@ class AgentDB(BaseAlchemyDB):
             totp_code = (await session.scalars(query)).all()
             return [TOTPCode.model_validate(totp_code) for totp_code in totp_code]
 
+    async def get_otp_codes_by_run(
+        self,
+        organization_id: str,
+        task_id: str | None = None,
+        workflow_run_id: str | None = None,
+        valid_lifespan_minutes: int = settings.TOTP_LIFESPAN_MINUTES,
+        limit: int = 1,
+    ) -> list[TOTPCode]:
+        """Get OTP codes matching a specific task or workflow run (no totp_identifier required).
+
+        Used when the agent detects a 2FA page but no TOTP credentials are pre-configured.
+        The user submits codes manually via the UI, and this method finds them by run context.
+        """
+        if not workflow_run_id and not task_id:
+            return []
+        async with self.Session() as session:
+            query = (
+                select(TOTPCodeModel)
+                .filter_by(organization_id=organization_id)
+                .filter(TOTPCodeModel.created_at > datetime.utcnow() - timedelta(minutes=valid_lifespan_minutes))
+            )
+            if workflow_run_id:
+                query = query.filter(TOTPCodeModel.workflow_run_id == workflow_run_id)
+            elif task_id:
+                query = query.filter(TOTPCodeModel.task_id == task_id)
+            query = query.order_by(TOTPCodeModel.created_at.desc()).limit(limit)
+            results = (await session.scalars(query)).all()
+            return [TOTPCode.model_validate(r) for r in results]
+
     async def get_recent_otp_codes(
         self,
         organization_id: str,
