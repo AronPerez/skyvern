@@ -145,6 +145,13 @@ async def poll_otp_value(
                     workflow_id=workflow_permanent_id,
                     workflow_run_id=workflow_run_id,
                 )
+            else:
+                # No pre-configured TOTP — poll for manually submitted codes by run context
+                otp_value = await _get_otp_value_by_run(
+                    organization_id,
+                    task_id=task_id,
+                    workflow_run_id=workflow_run_id,
+                )
             if otp_value:
                 LOG.info("Got otp value", otp_value=otp_value)
                 return otp_value
