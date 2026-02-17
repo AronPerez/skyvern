@@ -18,6 +18,7 @@ type VerificationCodeBannerProps = {
   pollingStartedAt: string | null | undefined;
   label: string;
   notificationTag: string;
+  navigateUrl?: string;
   defaultIdentifier: string | null | undefined;
   defaultWorkflowRunId?: string | null;
   defaultWorkflowId?: string | null;
@@ -30,6 +31,7 @@ function VerificationCodeBanner({
   pollingStartedAt,
   label,
   notificationTag,
+  navigateUrl,
   defaultIdentifier,
   defaultWorkflowRunId,
   defaultWorkflowId,
@@ -43,6 +45,7 @@ function VerificationCodeBanner({
       pollingStartedAt,
       label,
       notificationTag,
+      navigateUrl,
     });
 
   if (!isWaitingForCode) return null;
