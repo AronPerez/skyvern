@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { LockClosedIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
@@ -33,12 +33,23 @@ function useVerificationCodeAlert({
   navigateUrl,
 }: UseVerificationCodeAlertOptions): UseVerificationCodeAlertReturn {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const toastDismissRef = useRef<(() => void) | null>(null);
+  const autoDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Countdown timer — reset when waiting state changes
   useEffect(() => {
     if (!isWaitingForCode || !pollingStartedAt) {
       setTimeRemaining(null);
       notifiedTags.delete(notificationTag);
+      // Dismiss toast immediately when no longer waiting for code
+      toastDismissRef.current?.();
+      toastDismissRef.current = null;
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+        autoDismissTimerRef.current = null;
+      }
       return;
     }
 
@@ -94,7 +105,7 @@ function useVerificationCodeAlert({
     }
 
     // In-app toast — Figma Option C style (dark bg, amber outline, lock icon, nav link)
-    toast({
+    const result = toast({
       variant: "default",
       className: "border-warning/50",
       title: createElement(
@@ -127,6 +138,19 @@ function useVerificationCodeAlert({
           : null,
       ),
     });
+
+    toastDismissRef.current = result.dismiss;
+    autoDismissTimerRef.current = setTimeout(() => {
+      result.dismiss();
+      autoDismissTimerRef.current = null;
+    }, 15_000);
+
+    return () => {
+      if (autoDismissTimerRef.current) {
+        clearTimeout(autoDismissTimerRef.current);
+        autoDismissTimerRef.current = null;
+      }
+    };
   }, [isWaitingForCode, label, notificationTag, navigateUrl]);
 
   const isTimeCritical = useMemo(

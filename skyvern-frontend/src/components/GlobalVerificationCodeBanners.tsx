@@ -10,6 +10,12 @@ function notificationLabel(req: VerificationRequest): string {
   return "Run";
 }
 
+function notificationNavigateUrl(req: VerificationRequest): string | undefined {
+  if (req.workflow_run_id) return `/runs/${req.workflow_run_id}/overview`;
+  if (req.task_id) return `/runs/${req.task_id}/actions`;
+  return undefined;
+}
+
 /**
  * Invisible component that fires toast / browser notification / sound
  * for a single active 2FA request. No banner UI — that lives on the
@@ -22,6 +28,7 @@ function GlobalNotificationItem({ req }: { req: VerificationRequest }) {
     pollingStartedAt: req.polling_started_at ?? null,
     label: notificationLabel(req),
     notificationTag: `2fa-required-${key}`,
+    navigateUrl: notificationNavigateUrl(req),
   });
   return null;
 }
