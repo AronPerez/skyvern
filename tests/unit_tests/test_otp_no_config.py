@@ -7,7 +7,7 @@ import pytest
 from skyvern.constants import SPECIAL_FIELD_VERIFICATION_CODE
 from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
-from skyvern.forge.sdk.notification_registry import NotificationRegistry
+from skyvern.forge.sdk.notification_registry import LocalNotificationRegistry
 from skyvern.forge.sdk.routes.credentials import send_totp_code
 from skyvern.forge.sdk.schemas.totp_codes import TOTPCodeCreate
 from skyvern.schemas.runs import RunEngine
@@ -475,13 +475,16 @@ async def test_poll_otp_value_publishes_required_event_for_task():
     mock_app = MagicMock()
     mock_app.DATABASE = mock_db
 
-    registry = NotificationRegistry()
+    registry = LocalNotificationRegistry()
     queue = registry.subscribe("org_1")
 
     with (
         patch("skyvern.services.otp_service.app", new=mock_app),
         patch("skyvern.services.otp_service.asyncio.sleep", new_callable=AsyncMock),
-        patch("skyvern.services.otp_service.notification_registry", new=registry),
+        patch(
+            "skyvern.forge.sdk.notification_registry.NotificationRegistryFactory._NotificationRegistryFactory__registry",
+            new=registry,
+        ),
     ):
         await poll_otp_value(organization_id="org_1", task_id="tsk_1")
 
@@ -516,13 +519,16 @@ async def test_poll_otp_value_publishes_required_event_for_workflow_run():
     mock_app = MagicMock()
     mock_app.DATABASE = mock_db
 
-    registry = NotificationRegistry()
+    registry = LocalNotificationRegistry()
     queue = registry.subscribe("org_1")
 
     with (
         patch("skyvern.services.otp_service.app", new=mock_app),
         patch("skyvern.services.otp_service.asyncio.sleep", new_callable=AsyncMock),
-        patch("skyvern.services.otp_service.notification_registry", new=registry),
+        patch(
+            "skyvern.forge.sdk.notification_registry.NotificationRegistryFactory._NotificationRegistryFactory__registry",
+            new=registry,
+        ),
     ):
         await poll_otp_value(organization_id="org_1", workflow_run_id="wr_1")
 
