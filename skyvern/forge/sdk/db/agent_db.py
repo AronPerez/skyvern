@@ -885,6 +885,59 @@ class AgentDB(BaseAlchemyDB):
             LOG.error("SQLAlchemyError", exc_info=True)
             raise
 
+    @read_retry
+    async def get_active_verification_requests(self, organization_id: str) -> list[dict]:
+        """Return active 2FA verification requests for an organization.
+
+        Queries both tasks and workflow runs where waiting_for_verification_code=True.
+        Used to provide initial state when a WebSocket notification client connects.
+        """
+        results: list[dict] = []
+        async with self.Session() as session:
+            # Tasks waiting for verification
+            task_rows = (
+                await session.scalars(
+                    select(TaskModel)
+                    .filter_by(organization_id=organization_id)
+                    .filter_by(waiting_for_verification_code=True)
+                )
+            ).all()
+            for t in task_rows:
+                results.append(
+                    {
+                        "task_id": t.task_id,
+                        "workflow_run_id": None,
+                        "verification_code_identifier": t.verification_code_identifier,
+                        "verification_code_polling_started_at": (
+                            t.verification_code_polling_started_at.isoformat()
+                            if t.verification_code_polling_started_at
+                            else None
+                        ),
+                    }
+                )
+            # Workflow runs waiting for verification
+            wr_rows = (
+                await session.scalars(
+                    select(WorkflowRunModel)
+                    .filter_by(organization_id=organization_id)
+                    .filter_by(waiting_for_verification_code=True)
+                )
+            ).all()
+            for wr in wr_rows:
+                results.append(
+                    {
+                        "task_id": None,
+                        "workflow_run_id": wr.workflow_run_id,
+                        "verification_code_identifier": wr.verification_code_identifier,
+                        "verification_code_polling_started_at": (
+                            wr.verification_code_polling_started_at.isoformat()
+                            if wr.verification_code_polling_started_at
+                            else None
+                        ),
+                    }
+                )
+        return results
+
     async def bulk_update_tasks(
         self,
         task_ids: list[str],
