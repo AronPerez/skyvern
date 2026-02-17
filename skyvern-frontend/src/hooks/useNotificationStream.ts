@@ -20,56 +20,48 @@ type NotificationMessage = {
   polling_started_at?: string | null;
 };
 
-function requestKey(msg: {
-  task_id?: string;
-  workflow_run_id?: string;
-}): string {
-  return msg.task_id ?? msg.workflow_run_id ?? "";
-}
+const requestKey = (msg: { task_id?: string; workflow_run_id?: string }) =>
+  msg.task_id ?? msg.workflow_run_id ?? "";
 
-function useNotificationStream(): {
-  events: NotificationEvent[];
-  verificationRequests: VerificationRequest[];
-} {
-  const [eventMap, setEventMap] = useState<Map<string, NotificationEvent>>(
-    new Map(),
+function useNotificationStream() {
+  const [eventMap, setEventMap] = useState(
+    new Map<string, NotificationEvent>(),
   );
   const credentialGetter = useCredentialGetter();
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const unmountedRef = useRef(false);
 
   useEffect(() => {
-    unmountedRef.current = false;
+    let cancelled = false;
 
-    async function connect() {
-      if (unmountedRef.current) return;
+    const connect = async () => {
+      if (cancelled) return;
 
-      let credential = "";
-      if (credentialGetter) {
-        const token = await credentialGetter();
-        credential = `?token=Bearer ${token}`;
-      } else {
-        const apiKey = getRuntimeApiKey();
-        credential = apiKey ? `?apikey=${apiKey}` : "";
-      }
+      const credential = credentialGetter
+        ? `?token=Bearer ${await credentialGetter()}`
+        : getRuntimeApiKey()
+          ? `?apikey=${getRuntimeApiKey()}`
+          : "";
 
-      if (!credential) return;
+      if (!credential || cancelled) return;
+
+      socketRef.current?.close();
+      socketRef.current = null;
 
       const socket = new WebSocket(
         `${wssBaseUrl}/stream/notifications${credential}`,
       );
       socketRef.current = socket;
 
-      socket.addEventListener("message", (event) => {
+      socket.addEventListener("message", ({ data }) => {
         try {
-          const msg: NotificationMessage = JSON.parse(event.data);
+          const msg: NotificationMessage = JSON.parse(data);
           const key = requestKey(msg);
           if (!key) return;
 
-          if (msg.type === "verification_code_required") {
-            setEventMap((prev) => {
-              const next = new Map(prev);
+          setEventMap((prev) => {
+            const next = new Map(prev);
+            if (msg.type === "verification_code_required") {
               next.set(key, {
                 type: "verification_code",
                 task_id: msg.task_id,
@@ -77,44 +69,33 @@ function useNotificationStream(): {
                 identifier: msg.identifier,
                 polling_started_at: msg.polling_started_at,
               });
-              return next;
-            });
-          } else if (msg.type === "verification_code_resolved") {
-            setEventMap((prev) => {
-              const next = new Map(prev);
+            } else if (msg.type === "verification_code_resolved") {
               next.delete(key);
-              return next;
-            });
-          }
+            }
+            return next;
+          });
         } catch {
-          // ignore malformed messages
+          // Ignore malformed messages
         }
       });
 
       socket.addEventListener("close", () => {
-        socketRef.current = null;
-        if (!unmountedRef.current) {
+        if (socketRef.current === socket && !cancelled) {
           reconnectTimerRef.current = setTimeout(connect, 3000);
         }
       });
 
       socket.addEventListener("error", () => {
-        socket.close();
+        if (socketRef.current === socket) socket.close();
       });
-    }
+    };
 
     connect();
 
     return () => {
-      unmountedRef.current = true;
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
+      cancelled = true;
+      reconnectTimerRef.current && clearTimeout(reconnectTimerRef.current);
+      socketRef.current?.close();
     };
   }, [credentialGetter]);
 
