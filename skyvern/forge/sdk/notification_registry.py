@@ -1,10 +1,12 @@
-"""In-process pub/sub registry for pushing real-time notifications to WebSocket clients.
+"""Pluggable pub/sub registry for pushing real-time notifications to WebSocket clients.
 
-Each organization can have multiple subscribers (WebSocket connections).
-Events are published to all subscribers for the given organization.
+OSS uses LocalNotificationRegistry (in-process asyncio queues).
+Cloud deployments can substitute a distributed implementation
+(e.g., Redis pub/sub) via NotificationRegistryFactory.set_registry().
 """
 
 import asyncio
+from abc import ABC, abstractmethod
 from collections import defaultdict
 
 import structlog
@@ -12,8 +14,25 @@ import structlog
 LOG = structlog.get_logger()
 
 
-class NotificationRegistry:
-    """Fan-out pub/sub: publish a message to all subscribers for an organization."""
+class BaseNotificationRegistry(ABC):
+    """Abstract pub/sub registry scoped by organization.
+
+    Implementations must fan-out: a single publish call delivers the
+    message to every active subscriber for that organization.
+    """
+
+    @abstractmethod
+    def subscribe(self, organization_id: str) -> asyncio.Queue[dict]: ...
+
+    @abstractmethod
+    def unsubscribe(self, organization_id: str, queue: asyncio.Queue[dict]) -> None: ...
+
+    @abstractmethod
+    def publish(self, organization_id: str, message: dict) -> None: ...
+
+
+class LocalNotificationRegistry(BaseNotificationRegistry):
+    """In-process fan-out pub/sub using asyncio queues. Single-pod only."""
 
     def __init__(self) -> None:
         self._subscribers: dict[str, list[asyncio.Queue[dict]]] = defaultdict(list)
@@ -47,4 +66,13 @@ class NotificationRegistry:
                 )
 
 
-notification_registry = NotificationRegistry()
+class NotificationRegistryFactory:
+    __registry: BaseNotificationRegistry = LocalNotificationRegistry()
+
+    @staticmethod
+    def set_registry(registry: BaseNotificationRegistry) -> None:
+        NotificationRegistryFactory.__registry = registry
+
+    @staticmethod
+    def get_registry() -> BaseNotificationRegistry:
+        return NotificationRegistryFactory.__registry
