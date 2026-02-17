@@ -7,7 +7,7 @@ import pytest
 from skyvern.constants import SPECIAL_FIELD_VERIFICATION_CODE
 from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
-from skyvern.forge.sdk.notification_registry import LocalNotificationRegistry
+from skyvern.forge.sdk.notification.local import LocalNotificationRegistry
 from skyvern.forge.sdk.routes.credentials import send_totp_code
 from skyvern.forge.sdk.schemas.totp_codes import TOTPCodeCreate
 from skyvern.schemas.runs import RunEngine
@@ -482,7 +482,7 @@ async def test_poll_otp_value_publishes_required_event_for_task():
         patch("skyvern.services.otp_service.app", new=mock_app),
         patch("skyvern.services.otp_service.asyncio.sleep", new_callable=AsyncMock),
         patch(
-            "skyvern.forge.sdk.notification_registry.NotificationRegistryFactory._NotificationRegistryFactory__registry",
+            "skyvern.forge.sdk.notification.factory.NotificationRegistryFactory._NotificationRegistryFactory__registry",
             new=registry,
         ),
     ):
@@ -526,7 +526,7 @@ async def test_poll_otp_value_publishes_required_event_for_workflow_run():
         patch("skyvern.services.otp_service.app", new=mock_app),
         patch("skyvern.services.otp_service.asyncio.sleep", new_callable=AsyncMock),
         patch(
-            "skyvern.forge.sdk.notification_registry.NotificationRegistryFactory._NotificationRegistryFactory__registry",
+            "skyvern.forge.sdk.notification.factory.NotificationRegistryFactory._NotificationRegistryFactory__registry",
             new=registry,
         ),
     ):

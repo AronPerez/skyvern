@@ -3,11 +3,9 @@
 import pytest
 
 from skyvern.forge.sdk.db.agent_db import AgentDB
-from skyvern.forge.sdk.notification_registry import (
-    BaseNotificationRegistry,
-    LocalNotificationRegistry,
-    NotificationRegistryFactory,
-)
+from skyvern.forge.sdk.notification.base import BaseNotificationRegistry
+from skyvern.forge.sdk.notification.factory import NotificationRegistryFactory
+from skyvern.forge.sdk.notification.local import LocalNotificationRegistry
 
 # === Task 1: NotificationRegistry subscribe / publish / unsubscribe ===
 

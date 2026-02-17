@@ -7,7 +7,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from skyvern.forge import app
-from skyvern.forge.sdk.notification_registry import NotificationRegistryFactory
+from skyvern.forge.sdk.notification.factory import NotificationRegistryFactory
 from skyvern.forge.sdk.routes.routers import legacy_base_router
 from skyvern.forge.sdk.services.org_auth_service import get_current_org
 
