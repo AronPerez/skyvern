@@ -885,7 +885,7 @@ class AgentDB(BaseAlchemyDB):
             LOG.error("SQLAlchemyError", exc_info=True)
             raise
 
-    @read_retry
+    @read_retry()
     async def get_active_verification_requests(self, organization_id: str) -> list[dict]:
         """Return active 2FA verification requests for an organization.
 
