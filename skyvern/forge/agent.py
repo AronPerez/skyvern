@@ -3142,7 +3142,7 @@ class ForgeAgent:
 
         current_context = skyvern_context.ensure_context()
         verification_code = current_context.totp_codes.get(task.task_id)
-        if (task.totp_verification_url or task.totp_identifier) and verification_code:
+        if verification_code:
             if (
                 isinstance(final_navigation_payload, dict)
                 and SPECIAL_FIELD_VERIFICATION_CODE not in final_navigation_payload
