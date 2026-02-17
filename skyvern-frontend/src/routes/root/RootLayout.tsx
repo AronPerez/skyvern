@@ -5,7 +5,7 @@ import { Outlet } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { useDebugStore } from "@/store/useDebugStore";
-import { GlobalVerificationCodeBanners } from "@/components/GlobalVerificationCodeBanners";
+import { GlobalNotificationListener } from "@/components/GlobalNotificationListener";
 import { SelfHealApiKeyBanner } from "@/components/SelfHealApiKeyBanner";
 
 function RootLayout() {
@@ -25,7 +25,7 @@ function RootLayout() {
       <div className="h-full w-full">
         <div className={horizontalPadding}>
           <SelfHealApiKeyBanner />
-          <GlobalVerificationCodeBanners />
+          <GlobalNotificationListener />
         </div>
         <Header />
         <main

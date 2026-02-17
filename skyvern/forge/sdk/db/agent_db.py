@@ -894,12 +894,14 @@ class AgentDB(BaseAlchemyDB):
         """
         results: list[dict] = []
         async with self.Session() as session:
-            # Tasks waiting for verification
+            # Tasks waiting for verification (exclude finalized tasks)
+            finalized_task_statuses = [s.value for s in TaskStatus if s.is_final()]
             task_rows = (
                 await session.scalars(
                     select(TaskModel)
                     .filter_by(organization_id=organization_id)
                     .filter_by(waiting_for_verification_code=True)
+                    .filter(TaskModel.status.not_in(finalized_task_statuses))
                 )
             ).all()
             for t in task_rows:
@@ -915,12 +917,14 @@ class AgentDB(BaseAlchemyDB):
                         ),
                     }
                 )
-            # Workflow runs waiting for verification
+            # Workflow runs waiting for verification (exclude finalized runs)
+            finalized_wr_statuses = [s.value for s in WorkflowRunStatus if s.is_final()]
             wr_rows = (
                 await session.scalars(
                     select(WorkflowRunModel)
                     .filter_by(organization_id=organization_id)
                     .filter_by(waiting_for_verification_code=True)
+                    .filter(WorkflowRunModel.status.not_in(finalized_wr_statuses))
                 )
             ).all()
             for wr in wr_rows:

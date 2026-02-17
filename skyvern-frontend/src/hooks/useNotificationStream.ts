@@ -3,11 +3,14 @@ import { useCredentialGetter } from "@/hooks/useCredentialGetter";
 import { getRuntimeApiKey, wssBaseUrl } from "@/util/env";
 
 type VerificationRequest = {
+  type: "verification_code";
   task_id?: string;
   workflow_run_id?: string;
   identifier?: string | null;
   polling_started_at?: string | null;
 };
+
+type NotificationEvent = VerificationRequest;
 
 type NotificationMessage = {
   type: string;
@@ -24,8 +27,11 @@ function requestKey(msg: {
   return msg.task_id ?? msg.workflow_run_id ?? "";
 }
 
-function useNotificationStream(): VerificationRequest[] {
-  const [requests, setRequests] = useState<Map<string, VerificationRequest>>(
+function useNotificationStream(): {
+  events: NotificationEvent[];
+  verificationRequests: VerificationRequest[];
+} {
+  const [eventMap, setEventMap] = useState<Map<string, NotificationEvent>>(
     new Map(),
   );
   const credentialGetter = useCredentialGetter();
@@ -62,9 +68,10 @@ function useNotificationStream(): VerificationRequest[] {
           if (!key) return;
 
           if (msg.type === "verification_code_required") {
-            setRequests((prev) => {
+            setEventMap((prev) => {
               const next = new Map(prev);
               next.set(key, {
+                type: "verification_code",
                 task_id: msg.task_id,
                 workflow_run_id: msg.workflow_run_id,
                 identifier: msg.identifier,
@@ -73,7 +80,7 @@ function useNotificationStream(): VerificationRequest[] {
               return next;
             });
           } else if (msg.type === "verification_code_resolved") {
-            setRequests((prev) => {
+            setEventMap((prev) => {
               const next = new Map(prev);
               next.delete(key);
               return next;
@@ -111,8 +118,13 @@ function useNotificationStream(): VerificationRequest[] {
     };
   }, [credentialGetter]);
 
-  return Array.from(requests.values());
+  const events = Array.from(eventMap.values());
+  const verificationRequests = events.filter(
+    (e): e is VerificationRequest => e.type === "verification_code",
+  );
+
+  return { events, verificationRequests };
 }
 
 export { useNotificationStream };
-export type { VerificationRequest };
+export type { VerificationRequest, NotificationEvent };

@@ -21,7 +21,7 @@ function notificationNavigateUrl(req: VerificationRequest): string | undefined {
  * for a single active 2FA request. No banner UI — that lives on the
  * per-page detail components only.
  */
-function GlobalNotificationItem({ req }: { req: VerificationRequest }) {
+function VerificationCodeHandler({ req }: { req: VerificationRequest }) {
   const key = req.task_id ?? req.workflow_run_id ?? "";
   useVerificationCodeAlert({
     isWaitingForCode: true,
@@ -33,19 +33,19 @@ function GlobalNotificationItem({ req }: { req: VerificationRequest }) {
   return null;
 }
 
-function GlobalVerificationCodeBanners() {
-  const requests = useNotificationStream();
+function GlobalNotificationListener() {
+  const { verificationRequests } = useNotificationStream();
 
-  if (requests.length === 0) return null;
+  if (verificationRequests.length === 0) return null;
 
   return (
     <>
-      {requests.map((req) => {
+      {verificationRequests.map((req) => {
         const key = req.task_id ?? req.workflow_run_id ?? "";
-        return <GlobalNotificationItem key={key} req={req} />;
+        return <VerificationCodeHandler key={key} req={req} />;
       })}
     </>
   );
 }
 
-export { GlobalVerificationCodeBanners };
+export { GlobalNotificationListener };
