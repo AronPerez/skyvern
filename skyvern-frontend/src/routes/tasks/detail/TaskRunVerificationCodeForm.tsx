@@ -13,12 +13,15 @@ function TaskRunVerificationCodeForm() {
   const isWaitingForCode =
     !isTaskFinalized && (task?.waiting_for_verification_code ?? false);
 
+  const navigateUrl = taskId ? `/tasks/${taskId}` : undefined;
+
   return (
     <VerificationCodeBanner
       isWaitingForCode={isWaitingForCode}
       pollingStartedAt={task?.verification_code_polling_started_at ?? null}
       label={`Task "${taskId}"`}
       notificationTag={`2fa-required-${taskId}`}
+      navigateUrl={navigateUrl}
       defaultIdentifier={task?.verification_code_identifier ?? null}
       defaultTaskId={taskId}
       onCodeSent={() => queryClient.invalidateQueries({ queryKey: ["task"] })}

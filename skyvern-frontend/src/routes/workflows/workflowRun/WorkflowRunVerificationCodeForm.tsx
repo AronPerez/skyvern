@@ -11,6 +11,11 @@ function WorkflowRunVerificationCodeForm() {
   const isWaitingForCode =
     !isRunFinalized && (workflowRun?.waiting_for_verification_code ?? false);
 
+  const navigateUrl =
+    workflowRun?.workflow?.workflow_permanent_id && workflowRun?.workflow_run_id
+      ? `/workflows/${workflowRun.workflow.workflow_permanent_id}/${workflowRun.workflow_run_id}`
+      : undefined;
+
   return (
     <VerificationCodeBanner
       isWaitingForCode={isWaitingForCode}
@@ -19,6 +24,7 @@ function WorkflowRunVerificationCodeForm() {
       }
       label={`Workflow "${workflowRun?.workflow?.title ?? "Run"}"`}
       notificationTag={`2fa-required-${workflowRun?.workflow_run_id}`}
+      navigateUrl={navigateUrl}
       defaultIdentifier={workflowRun?.verification_code_identifier ?? null}
       defaultWorkflowRunId={workflowRun?.workflow_run_id}
       defaultWorkflowId={workflowRun?.workflow?.workflow_permanent_id}
