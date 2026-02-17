@@ -142,7 +142,7 @@ async def poll_otp_value(
                     organization_id,
                     totp_identifier,
                     task_id=task_id,
-                    workflow_id=workflow_permanent_id,
+                    workflow_id=workflow_id,
                     workflow_run_id=workflow_run_id,
                 )
             else:

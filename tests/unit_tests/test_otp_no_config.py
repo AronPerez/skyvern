@@ -6,8 +6,10 @@ import pytest
 
 from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
+from skyvern.forge.sdk.routes.credentials import send_totp_code
+from skyvern.forge.sdk.schemas.totp_codes import TOTPCodeCreate
 from skyvern.schemas.runs import RunEngine
-from skyvern.services.otp_service import _get_otp_value_by_run, poll_otp_value
+from skyvern.services.otp_service import OTPValue, _get_otp_value_by_run, poll_otp_value
 
 
 @pytest.mark.asyncio
@@ -245,3 +247,132 @@ async def test_verification_code_check_always_true_with_totp_config():
         mock_build.assert_called_once()
         _, kwargs = mock_build.call_args
         assert kwargs["verification_code_check"] is True
+
+
+# === Fix: poll_otp_value should pass workflow_id, not workflow_permanent_id ===
+
+
+@pytest.mark.asyncio
+async def test_poll_otp_value_passes_workflow_id_not_permanent_id():
+    """poll_otp_value should pass workflow_id (w_* format) to _get_otp_value_from_db, not workflow_permanent_id."""
+    mock_db = AsyncMock()
+    mock_db.get_valid_org_auth_token.return_value = MagicMock(token="tok")
+    mock_db.update_workflow_run = AsyncMock()
+
+    mock_app = MagicMock()
+    mock_app.DATABASE = mock_db
+
+    with (
+        patch("skyvern.services.otp_service.app", new=mock_app),
+        patch("skyvern.services.otp_service.asyncio.sleep", new_callable=AsyncMock),
+        patch(
+            "skyvern.services.otp_service._get_otp_value_from_db",
+            new_callable=AsyncMock,
+            return_value=OTPValue(value="654321", type="totp"),
+        ) as mock_get_from_db,
+    ):
+        result = await poll_otp_value(
+            organization_id="org_1",
+            workflow_id="w_123",
+            workflow_run_id="wr_789",
+            workflow_permanent_id="wpid_456",
+            totp_identifier="user@example.com",
+        )
+    assert result is not None
+    assert result.value == "654321"
+    mock_get_from_db.assert_called_once_with(
+        "org_1",
+        "user@example.com",
+        task_id=None,
+        workflow_id="w_123",
+        workflow_run_id="wr_789",
+    )
+
+
+# === Fix: send_totp_code should resolve wpid_* to w_* before storage ===
+
+
+@pytest.mark.asyncio
+async def test_send_totp_code_resolves_wpid_to_workflow_id():
+    """send_totp_code should resolve wpid_* to w_* before storing in DB."""
+    mock_workflow = MagicMock()
+    mock_workflow.workflow_id = "w_abc123"
+
+    mock_totp_code = MagicMock()
+
+    mock_db = AsyncMock()
+    mock_db.get_workflow_by_permanent_id = AsyncMock(return_value=mock_workflow)
+    mock_db.create_otp_code = AsyncMock(return_value=mock_totp_code)
+
+    mock_app = MagicMock()
+    mock_app.DATABASE = mock_db
+
+    data = TOTPCodeCreate(
+        totp_identifier="user@example.com",
+        content="123456",
+        workflow_id="wpid_xyz789",
+    )
+    curr_org = MagicMock()
+    curr_org.organization_id = "org_1"
+
+    with patch("skyvern.forge.sdk.routes.credentials.app", new=mock_app):
+        await send_totp_code(data=data, curr_org=curr_org)
+
+    mock_db.create_otp_code.assert_called_once()
+    call_kwargs = mock_db.create_otp_code.call_args[1]
+    assert call_kwargs["workflow_id"] == "w_abc123", f"Expected w_abc123 but got {call_kwargs['workflow_id']}"
+
+
+@pytest.mark.asyncio
+async def test_send_totp_code_w_format_passes_through():
+    """send_totp_code should resolve and store w_* format workflow_id correctly."""
+    mock_workflow = MagicMock()
+    mock_workflow.workflow_id = "w_abc123"
+
+    mock_totp_code = MagicMock()
+
+    mock_db = AsyncMock()
+    mock_db.get_workflow = AsyncMock(return_value=mock_workflow)
+    mock_db.create_otp_code = AsyncMock(return_value=mock_totp_code)
+
+    mock_app = MagicMock()
+    mock_app.DATABASE = mock_db
+
+    data = TOTPCodeCreate(
+        totp_identifier="user@example.com",
+        content="123456",
+        workflow_id="w_abc123",
+    )
+    curr_org = MagicMock()
+    curr_org.organization_id = "org_1"
+
+    with patch("skyvern.forge.sdk.routes.credentials.app", new=mock_app):
+        await send_totp_code(data=data, curr_org=curr_org)
+
+    call_kwargs = mock_db.create_otp_code.call_args[1]
+    assert call_kwargs["workflow_id"] == "w_abc123"
+
+
+@pytest.mark.asyncio
+async def test_send_totp_code_none_workflow_id():
+    """send_totp_code should pass None workflow_id when not provided."""
+    mock_totp_code = MagicMock()
+
+    mock_db = AsyncMock()
+    mock_db.create_otp_code = AsyncMock(return_value=mock_totp_code)
+
+    mock_app = MagicMock()
+    mock_app.DATABASE = mock_db
+
+    data = TOTPCodeCreate(
+        totp_identifier="user@example.com",
+        content="123456",
+    )
+    curr_org = MagicMock()
+    curr_org.organization_id = "org_1"
+
+    with patch("skyvern.forge.sdk.routes.credentials.app", new=mock_app):
+        await send_totp_code(data=data, curr_org=curr_org)
+
+    call_kwargs = mock_db.create_otp_code.call_args[1]
+    assert call_kwargs["workflow_id"] is None
