@@ -1,10 +1,15 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { LockClosedIcon } from "@radix-ui/react-icons";
 import { ExternalLinkIcon } from "@radix-ui/react-icons";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 
 const VERIFICATION_CODE_TIMEOUT_MINS = 15;
+
+// Module-level set to track which notification tags have already fired,
+// preventing re-notification when navigating to a workflow page that
+// remounts the hook while isWaitingForCode is still true.
+const notifiedTags = new Set<string>();
 
 export function formatTimeRemaining(seconds: number): string {
   if (seconds <= 0) return "0:00";
@@ -35,13 +40,12 @@ export function useVerificationCodeAlert({
   navigateUrl,
 }: UseVerificationCodeAlertOptions): UseVerificationCodeAlertReturn {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const hasNotifiedRef = useRef(false);
 
   // Countdown timer — reset when waiting state changes
   useEffect(() => {
     if (!isWaitingForCode || !pollingStartedAt) {
       setTimeRemaining(null);
-      hasNotifiedRef.current = false;
+      notifiedTags.delete(notificationTag);
       return;
     }
 
@@ -58,12 +62,12 @@ export function useVerificationCodeAlert({
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [isWaitingForCode, pollingStartedAt]);
+  }, [isWaitingForCode, pollingStartedAt, notificationTag]);
 
   // Browser notification + sound + in-app toast (fire once per waiting transition)
   useEffect(() => {
-    if (!isWaitingForCode || hasNotifiedRef.current) return;
-    hasNotifiedRef.current = true;
+    if (!isWaitingForCode || notifiedTags.has(notificationTag)) return;
+    notifiedTags.add(notificationTag);
 
     // OS-level browser notification
     if (typeof Notification !== "undefined") {
