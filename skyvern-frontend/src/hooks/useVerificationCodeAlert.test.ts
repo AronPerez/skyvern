@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTimeRemaining } from "./useVerificationCodeAlert";
+import { formatTimeRemaining } from "@/util/timeFormat";
 
 describe("formatTimeRemaining", () => {
   it("formats 0 seconds as 0:00", () => {
