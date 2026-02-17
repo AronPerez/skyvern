@@ -1,19 +1,33 @@
-import { VerificationCodeBanner } from "@/components/VerificationCodeBanner";
+import { useVerificationCodeAlert } from "@/hooks/useVerificationCodeAlert";
 import {
   useNotificationStream,
   type VerificationRequest,
 } from "@/hooks/useNotificationStream";
-import { useQueryClient } from "@tanstack/react-query";
 
-function bannerLabel(req: VerificationRequest): string {
+function notificationLabel(req: VerificationRequest): string {
   if (req.task_id) return `Task "${req.task_id}"`;
   if (req.workflow_run_id) return `Workflow run "${req.workflow_run_id}"`;
   return "Run";
 }
 
+/**
+ * Invisible component that fires toast / browser notification / sound
+ * for a single active 2FA request. No banner UI — that lives on the
+ * per-page detail components only.
+ */
+function GlobalNotificationItem({ req }: { req: VerificationRequest }) {
+  const key = req.task_id ?? req.workflow_run_id ?? "";
+  useVerificationCodeAlert({
+    isWaitingForCode: true,
+    pollingStartedAt: req.polling_started_at ?? null,
+    label: notificationLabel(req),
+    notificationTag: `2fa-required-${key}`,
+  });
+  return null;
+}
+
 function GlobalVerificationCodeBanners() {
   const requests = useNotificationStream();
-  const queryClient = useQueryClient();
 
   if (requests.length === 0) return null;
 
@@ -21,28 +35,7 @@ function GlobalVerificationCodeBanners() {
     <>
       {requests.map((req) => {
         const key = req.task_id ?? req.workflow_run_id ?? "";
-        return (
-          <VerificationCodeBanner
-            key={key}
-            isWaitingForCode={true}
-            pollingStartedAt={req.polling_started_at ?? null}
-            label={bannerLabel(req)}
-            notificationTag={`global-2fa-${key}`}
-            defaultIdentifier={req.identifier ?? null}
-            defaultTaskId={req.task_id ?? null}
-            defaultWorkflowRunId={req.workflow_run_id ?? null}
-            onCodeSent={() => {
-              if (req.task_id) {
-                queryClient.invalidateQueries({ queryKey: ["task"] });
-              }
-              if (req.workflow_run_id) {
-                queryClient.invalidateQueries({
-                  queryKey: ["workflowRun"],
-                });
-              }
-            }}
-          />
-        );
+        return <GlobalNotificationItem key={key} req={req} />;
       })}
     </>
   );
