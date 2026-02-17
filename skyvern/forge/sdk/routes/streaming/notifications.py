@@ -7,7 +7,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
 
 from skyvern.forge import app
-from skyvern.forge.sdk.notification_registry import notification_registry
+from skyvern.forge.sdk.notification_registry import NotificationRegistryFactory
 from skyvern.forge.sdk.routes.routers import legacy_base_router
 from skyvern.forge.sdk.services.org_auth_service import get_current_org
 
@@ -42,7 +42,8 @@ async def notification_stream(
         return
 
     LOG.info("Notifications: Started streaming", organization_id=organization_id)
-    queue = notification_registry.subscribe(organization_id)
+    registry = NotificationRegistryFactory.get_registry()
+    queue = registry.subscribe(organization_id)
 
     try:
         # Send initial state: all currently active verification requests
@@ -82,5 +83,5 @@ async def notification_stream(
     except Exception:
         LOG.warning("Notifications: Error while streaming", organization_id=organization_id, exc_info=True)
     finally:
-        notification_registry.unsubscribe(organization_id, queue)
+        registry.unsubscribe(organization_id, queue)
     LOG.info("Notifications: Connection closed", organization_id=organization_id)
