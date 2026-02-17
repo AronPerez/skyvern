@@ -11,7 +11,7 @@ from skyvern.forge.prompts import prompt_engine
 from skyvern.forge.sdk.core.aiohttp_helper import aiohttp_post
 from skyvern.forge.sdk.core.security import generate_skyvern_webhook_signature
 from skyvern.forge.sdk.db.enums import OrganizationAuthTokenType
-from skyvern.forge.sdk.notification_registry import notification_registry
+from skyvern.forge.sdk.notification_registry import NotificationRegistryFactory
 from skyvern.forge.sdk.schemas.totp_codes import OTPType
 
 LOG = structlog.get_logger()
@@ -98,11 +98,12 @@ async def poll_otp_value(
                 verification_code_identifier=identifier_for_ui,
             )
             try:
-                notification_registry.publish(
+                NotificationRegistryFactory.get_registry().publish(
                     organization_id,
                     {
                         "type": "verification_code_required",
                         "workflow_run_id": workflow_run_id,
+                        "task_id": task_id,
                         "identifier": identifier_for_ui,
                         "polling_started_at": start_datetime.isoformat(),
                     },
@@ -126,7 +127,7 @@ async def poll_otp_value(
                 verification_code_identifier=identifier_for_ui,
             )
             try:
-                notification_registry.publish(
+                NotificationRegistryFactory.get_registry().publish(
                     organization_id,
                     {
                         "type": "verification_code_required",
@@ -196,9 +197,9 @@ async def poll_otp_value(
                 )
                 LOG.info("Cleared 2FA waiting state for workflow run", workflow_run_id=workflow_run_id)
                 try:
-                    notification_registry.publish(
+                    NotificationRegistryFactory.get_registry().publish(
                         organization_id,
-                        {"type": "verification_code_resolved", "workflow_run_id": workflow_run_id},
+                        {"type": "verification_code_resolved", "workflow_run_id": workflow_run_id, "task_id": task_id},
                     )
                 except Exception:
                     LOG.warning("Failed to publish 2FA resolved notification for workflow run", exc_info=True)
@@ -213,7 +214,7 @@ async def poll_otp_value(
                 )
                 LOG.info("Cleared 2FA waiting state for task", task_id=task_id)
                 try:
-                    notification_registry.publish(
+                    NotificationRegistryFactory.get_registry().publish(
                         organization_id,
                         {"type": "verification_code_resolved", "task_id": task_id},
                     )
