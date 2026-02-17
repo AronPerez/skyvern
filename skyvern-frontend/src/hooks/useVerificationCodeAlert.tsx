@@ -1,4 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
+import { LockClosedIcon } from "@radix-ui/react-icons";
+import { ExternalLinkIcon } from "@radix-ui/react-icons";
+import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/use-toast";
 
 const VERIFICATION_CODE_TIMEOUT_MINS = 15;
@@ -15,6 +18,7 @@ type UseVerificationCodeAlertOptions = {
   pollingStartedAt: string | null | undefined;
   label: string;
   notificationTag: string;
+  navigateUrl?: string;
 };
 
 type UseVerificationCodeAlertReturn = {
@@ -28,6 +32,7 @@ export function useVerificationCodeAlert({
   pollingStartedAt,
   label,
   notificationTag,
+  navigateUrl,
 }: UseVerificationCodeAlertOptions): UseVerificationCodeAlertReturn {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const hasNotifiedRef = useRef(false);
@@ -91,13 +96,34 @@ export function useVerificationCodeAlert({
       console.error("Failed to create audio:", e);
     }
 
-    // In-app toast (uses existing toast system, TOAST_LIMIT=1)
+    // In-app toast — Figma Option C style (dark bg, amber outline, lock icon, nav link)
     toast({
-      variant: "warning",
-      title: "2FA Code Required",
-      description: `${label} needs verification to continue.`,
+      variant: "default",
+      className: "border-warning/50",
+      title: (
+        <div className="flex items-start gap-2">
+          <LockClosedIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-warning" />
+          <span>2FA Code Required</span>
+        </div>
+      ),
+      description: (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">
+            {label} needs verification to continue.
+          </p>
+          {navigateUrl && (
+            <Link
+              to={navigateUrl}
+              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+            >
+              Go to workflow
+              <ExternalLinkIcon className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
+      ),
     });
-  }, [isWaitingForCode, label, notificationTag]);
+  }, [isWaitingForCode, label, notificationTag, navigateUrl]);
 
   const isTimeCritical = useMemo(
     () => timeRemaining !== null && timeRemaining <= 60,
