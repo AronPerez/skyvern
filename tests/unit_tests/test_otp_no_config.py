@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from skyvern.constants import SPECIAL_FIELD_VERIFICATION_CODE
 from skyvern.forge.agent import ForgeAgent
 from skyvern.forge.sdk.db.agent_db import AgentDB
 from skyvern.forge.sdk.routes.credentials import send_totp_code
@@ -376,3 +377,80 @@ async def test_send_totp_code_none_workflow_id():
 
     call_kwargs = mock_db.create_otp_code.call_args[1]
     assert call_kwargs["workflow_id"] is None
+
+
+# === Fix: _build_navigation_payload should inject code without TOTP config ===
+
+
+def test_build_navigation_payload_injects_code_without_totp_config():
+    """_build_navigation_payload should inject SPECIAL_FIELD_VERIFICATION_CODE even when
+    task has no totp_verification_url or totp_identifier (manual 2FA flow)."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+
+    task = MagicMock()
+    task.totp_verification_url = None
+    task.totp_identifier = None
+    task.task_id = "tsk_manual_2fa"
+    task.workflow_run_id = "wr_123"
+    task.navigation_payload = {"username": "user@example.com"}
+
+    mock_context = MagicMock()
+    mock_context.totp_codes = {"tsk_manual_2fa": "123456"}
+    mock_context.has_magic_link_page.return_value = False
+
+    with patch("skyvern.forge.agent.skyvern_context") as mock_skyvern_ctx:
+        mock_skyvern_ctx.ensure_context.return_value = mock_context
+        result = agent._build_navigation_payload(task)
+
+    assert isinstance(result, dict)
+    assert SPECIAL_FIELD_VERIFICATION_CODE in result
+    assert result[SPECIAL_FIELD_VERIFICATION_CODE] == "123456"
+    # Original payload preserved
+    assert result["username"] == "user@example.com"
+
+
+def test_build_navigation_payload_injects_code_when_payload_is_none():
+    """_build_navigation_payload should create a dict with the code when payload is None."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+
+    task = MagicMock()
+    task.totp_verification_url = None
+    task.totp_identifier = None
+    task.task_id = "tsk_manual_2fa"
+    task.workflow_run_id = "wr_123"
+    task.navigation_payload = None
+
+    mock_context = MagicMock()
+    mock_context.totp_codes = {"tsk_manual_2fa": "999999"}
+    mock_context.has_magic_link_page.return_value = False
+
+    with patch("skyvern.forge.agent.skyvern_context") as mock_skyvern_ctx:
+        mock_skyvern_ctx.ensure_context.return_value = mock_context
+        result = agent._build_navigation_payload(task)
+
+    assert isinstance(result, dict)
+    assert result[SPECIAL_FIELD_VERIFICATION_CODE] == "999999"
+
+
+def test_build_navigation_payload_no_code_no_injection():
+    """_build_navigation_payload should NOT inject anything when no code in context."""
+    agent = ForgeAgent.__new__(ForgeAgent)
+
+    task = MagicMock()
+    task.totp_verification_url = None
+    task.totp_identifier = None
+    task.task_id = "tsk_no_code"
+    task.workflow_run_id = "wr_456"
+    task.navigation_payload = {"field": "value"}
+
+    mock_context = MagicMock()
+    mock_context.totp_codes = {}  # No code in context
+    mock_context.has_magic_link_page.return_value = False
+
+    with patch("skyvern.forge.agent.skyvern_context") as mock_skyvern_ctx:
+        mock_skyvern_ctx.ensure_context.return_value = mock_context
+        result = agent._build_navigation_payload(task)
+
+    assert isinstance(result, dict)
+    assert SPECIAL_FIELD_VERIFICATION_CODE not in result
+    assert result["field"] == "value"
