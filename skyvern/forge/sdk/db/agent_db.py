@@ -866,19 +866,18 @@ class AgentDB(BaseAlchemyDB):
                     )
                 ).first():
                     task.waiting_for_verification_code = waiting_for_verification_code
-                    if verification_code_identifier is not None:
-                        task.verification_code_identifier = verification_code_identifier
-                    if verification_code_polling_started_at is not None:
-                        task.verification_code_polling_started_at = verification_code_polling_started_at
                     if not waiting_for_verification_code:
                         # Clear identifiers when no longer waiting
                         task.verification_code_identifier = None
                         task.verification_code_polling_started_at = None
+                    else:
+                        if verification_code_identifier is not None:
+                            task.verification_code_identifier = verification_code_identifier
+                        if verification_code_polling_started_at is not None:
+                            task.verification_code_polling_started_at = verification_code_polling_started_at
                     await session.commit()
-                    updated_task = await self.get_task(task_id, organization_id=organization_id)
-                    if not updated_task:
-                        raise NotFoundError("Task not found")
-                    return updated_task
+                    await session.refresh(task)
+                    return convert_to_task(task, self.debug_enabled)
                 else:
                     raise NotFoundError("Task not found")
         except SQLAlchemyError:
@@ -893,17 +892,24 @@ class AgentDB(BaseAlchemyDB):
         Used to provide initial state when a WebSocket notification client connects.
         """
         results: list[dict] = []
+        cutoff = datetime.utcnow() - timedelta(hours=1)
         async with self.Session() as session:
             # Tasks waiting for verification (exclude finalized tasks)
+            # Only select the columns we need to avoid loading heavy JSON fields
             finalized_task_statuses = [s.value for s in TaskStatus if s.is_final()]
             task_rows = (
-                await session.scalars(
-                    select(TaskModel)
+                await session.execute(
+                    select(
+                        TaskModel.task_id,
+                        TaskModel.verification_code_identifier,
+                        TaskModel.verification_code_polling_started_at,
+                    )
                     .filter_by(organization_id=organization_id)
                     .filter_by(waiting_for_verification_code=True)
                     .filter_by(workflow_run_id=None)
                     .filter(TaskModel.status.not_in(finalized_task_statuses))
-                    .filter(TaskModel.created_at > datetime.utcnow() - timedelta(hours=1))
+                    .filter(TaskModel.created_at > cutoff)
+                    .limit(100)
                 )
             ).all()
             for t in task_rows:
@@ -922,12 +928,17 @@ class AgentDB(BaseAlchemyDB):
             # Workflow runs waiting for verification (exclude finalized runs)
             finalized_wr_statuses = [s.value for s in WorkflowRunStatus if s.is_final()]
             wr_rows = (
-                await session.scalars(
-                    select(WorkflowRunModel)
+                await session.execute(
+                    select(
+                        WorkflowRunModel.workflow_run_id,
+                        WorkflowRunModel.verification_code_identifier,
+                        WorkflowRunModel.verification_code_polling_started_at,
+                    )
                     .filter_by(organization_id=organization_id)
                     .filter_by(waiting_for_verification_code=True)
                     .filter(WorkflowRunModel.status.not_in(finalized_wr_statuses))
-                    .filter(WorkflowRunModel.created_at > datetime.utcnow() - timedelta(hours=1))
+                    .filter(WorkflowRunModel.created_at > cutoff)
+                    .limit(100)
                 )
             ).all()
             for wr in wr_rows:
