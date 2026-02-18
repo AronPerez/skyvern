@@ -56,6 +56,7 @@ function useNotificationStream() {
       socket.addEventListener("message", ({ data }) => {
         try {
           const msg: NotificationMessage = JSON.parse(data);
+          if (msg.type === "heartbeat" || msg.type === "timeout") return;
           const key = requestKey(msg);
           if (!key) return;
 
@@ -80,7 +81,7 @@ function useNotificationStream() {
       });
 
       socket.addEventListener("close", () => {
-        if (socketRef.current === socket && !cancelled) {
+        if (socketRef.current === socket && !cancelled && !document.hidden) {
           reconnectTimerRef.current = setTimeout(connect, 3000);
         }
       });
@@ -90,10 +91,23 @@ function useNotificationStream() {
       });
     };
 
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        reconnectTimerRef.current && clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+        socketRef.current?.close();
+        socketRef.current = null;
+      } else if (!socketRef.current && !cancelled) {
+        connect();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     connect();
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       reconnectTimerRef.current && clearTimeout(reconnectTimerRef.current);
       socketRef.current?.close();
     };

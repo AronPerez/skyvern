@@ -12,7 +12,7 @@ from skyvern.forge.sdk.routes.routers import legacy_base_router
 from skyvern.forge.sdk.services.org_auth_service import get_current_org
 
 LOG = structlog.get_logger()
-STREAMING_TIMEOUT = 300
+HEARTBEAT_INTERVAL = 60
 
 
 @legacy_base_router.websocket("/stream/notifications")
@@ -59,18 +59,44 @@ async def notification_stream(
                 }
             )
 
-        # Stream real-time events
-        while True:
+        # Watch for client disconnect while streaming events
+        disconnect_event = asyncio.Event()
+
+        async def _watch_disconnect() -> None:
             try:
-                message = await asyncio.wait_for(queue.get(), timeout=STREAMING_TIMEOUT)
-                await websocket.send_json(message)
-            except TimeoutError:
-                LOG.info(
-                    "Notifications: No events for timeout period. Closing.",
-                    organization_id=organization_id,
-                )
-                await websocket.send_json({"type": "timeout"})
-                return
+                while True:
+                    await websocket.receive()
+            except (WebSocketDisconnect, ConnectionClosedOK, ConnectionClosedError):
+                disconnect_event.set()
+
+        watcher = asyncio.create_task(_watch_disconnect())
+        try:
+            while not disconnect_event.is_set():
+                queue_task = asyncio.ensure_future(asyncio.wait_for(queue.get(), timeout=HEARTBEAT_INTERVAL))
+                disconnect_wait = asyncio.ensure_future(disconnect_event.wait())
+                done, pending = await asyncio.wait({queue_task, disconnect_wait}, return_when=asyncio.FIRST_COMPLETED)
+                for p in pending:
+                    p.cancel()
+
+                if disconnect_event.is_set():
+                    return
+
+                try:
+                    message = queue_task.result()
+                    await websocket.send_json(message)
+                except TimeoutError:
+                    try:
+                        await websocket.send_json({"type": "heartbeat"})
+                    except Exception:
+                        LOG.info(
+                            "Notifications: Client unreachable during heartbeat. Closing.",
+                            organization_id=organization_id,
+                        )
+                        return
+                except asyncio.CancelledError:
+                    return
+        finally:
+            watcher.cancel()
 
     except WebSocketDisconnect:
         LOG.info("Notifications: WebSocket disconnected", organization_id=organization_id)
