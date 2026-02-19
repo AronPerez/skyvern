@@ -71,6 +71,7 @@ WORKFLOW_TEMPLATE_PREFIX = "wt"
 ORGANIZATION_BILLING_PREFIX = "ob"
 WORKFLOW_COPILOT_CHAT_PREFIX = "wcc"
 WORKFLOW_COPILOT_CHAT_MESSAGE_PREFIX = "wccm"
+RUN_FEEDBACK_PREFIX = "fb"
 
 
 def generate_workflow_id() -> str:
@@ -276,6 +277,11 @@ def generate_workflow_copilot_chat_id() -> str:
 def generate_workflow_copilot_chat_message_id() -> str:
     int_id = generate_id()
     return f"{WORKFLOW_COPILOT_CHAT_MESSAGE_PREFIX}_{int_id}"
+
+
+def generate_run_feedback_id() -> str:
+    int_id = generate_id()
+    return f"{RUN_FEEDBACK_PREFIX}_{int_id}"
 
 
 ############# Helper functions below ##############

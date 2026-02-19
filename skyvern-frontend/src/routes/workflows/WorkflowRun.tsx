@@ -44,6 +44,7 @@ import { CodeEditor } from "./components/CodeEditor";
 import { cn } from "@/util/utils";
 import { ScrollArea, ScrollAreaViewport } from "@/components/ui/scroll-area";
 import { ApiWebhookActionsMenu } from "@/components/ApiWebhookActionsMenu";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { WebhookReplayDialog } from "@/components/WebhookReplayDialog";
 import { useFirstParam } from "@/hooks/useFirstParam";
 import { type ApiCommandOptions } from "@/util/apiCommands";
@@ -342,10 +343,18 @@ function WorkflowRun() {
               {workflowRunIsLoading ? (
                 <Skeleton className="h-8 w-28" />
               ) : workflowRun ? (
-                <StatusBadge
-                  className="mt-[0.27rem]"
-                  status={workflowRun?.status}
-                />
+                <>
+                  <StatusBadge
+                    className="mt-[0.27rem]"
+                    status={workflowRun?.status}
+                  />
+                  {workflowRunIsFinalized && (
+                    <FeedbackButtons
+                      runId={workflowRunId}
+                      disabled={workflowRunIsLoading}
+                    />
+                  )}
+                </>
               ) : null}
             </div>
             <h2 className="text-2xl text-slate-400">{workflowRunId}</h2>

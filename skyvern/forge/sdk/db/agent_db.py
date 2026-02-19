@@ -55,6 +55,7 @@ from skyvern.forge.sdk.db.models import (
     OrganizationModel,
     OutputParameterModel,
     PersistentBrowserSessionModel,
+    RunFeedbackModel,
     ScriptBlockModel,
     ScriptFileModel,
     ScriptModel,
@@ -6298,4 +6299,136 @@ class AgentDB(BaseAlchemyDB):
             raise
         except Exception:
             LOG.error("UnexpectedError", exc_info=True)
+            raise
+
+    # ==================== Run Feedback Methods ====================
+
+    async def create_run_feedback(
+        self,
+        organization_id: str,
+        feedback_value: int,
+        workflow_run_id: str | None = None,
+        task_id: str | None = None,
+        categories: list[str] | None = None,
+        comment: str | None = None,
+        created_by_user_id: str | None = None,
+    ) -> RunFeedbackModel:
+        """Create a new run feedback entry."""
+        try:
+            async with self.Session() as session:
+                feedback = RunFeedbackModel(
+                    organization_id=organization_id,
+                    workflow_run_id=workflow_run_id,
+                    task_id=task_id,
+                    feedback_value=feedback_value,
+                    categories=categories,
+                    comment=comment,
+                    created_by_user_id=created_by_user_id,
+                )
+                session.add(feedback)
+                await session.commit()
+                await session.refresh(feedback)
+                return feedback
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError creating run feedback", exc_info=True)
+            raise
+        except Exception:
+            LOG.error("UnexpectedError creating run feedback", exc_info=True)
+            raise
+
+    async def get_run_feedback_by_workflow_run_id(
+        self,
+        workflow_run_id: str,
+        organization_id: str | None = None,
+    ) -> RunFeedbackModel | None:
+        """Get feedback for a workflow run."""
+        try:
+            async with self.Session() as session:
+                query = select(RunFeedbackModel).filter_by(workflow_run_id=workflow_run_id)
+                if organization_id:
+                    query = query.filter_by(organization_id=organization_id)
+                return (await session.scalars(query)).first()
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError getting run feedback by workflow_run_id", exc_info=True)
+            raise
+        except Exception:
+            LOG.error("UnexpectedError getting run feedback by workflow_run_id", exc_info=True)
+            raise
+
+    async def get_run_feedback_by_task_id(
+        self,
+        task_id: str,
+        organization_id: str | None = None,
+    ) -> RunFeedbackModel | None:
+        """Get feedback for a task."""
+        try:
+            async with self.Session() as session:
+                query = select(RunFeedbackModel).filter_by(task_id=task_id)
+                if organization_id:
+                    query = query.filter_by(organization_id=organization_id)
+                return (await session.scalars(query)).first()
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError getting run feedback by task_id", exc_info=True)
+            raise
+        except Exception:
+            LOG.error("UnexpectedError getting run feedback by task_id", exc_info=True)
+            raise
+
+    async def get_run_feedback(
+        self,
+        feedback_id: str,
+        organization_id: str | None = None,
+    ) -> RunFeedbackModel | None:
+        """Get feedback by feedback_id."""
+        try:
+            async with self.Session() as session:
+                query = select(RunFeedbackModel).filter_by(feedback_id=feedback_id)
+                if organization_id:
+                    query = query.filter_by(organization_id=organization_id)
+                return (await session.scalars(query)).first()
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError getting run feedback", exc_info=True)
+            raise
+        except Exception:
+            LOG.error("UnexpectedError getting run feedback", exc_info=True)
+            raise
+
+    async def update_run_feedback(
+        self,
+        feedback_id: str,
+        organization_id: str,
+        feedback_value: int | None = None,
+        categories: list[str] | None = None,
+        comment: str | None = None,
+    ) -> RunFeedbackModel | None:
+        """Update an existing run feedback entry."""
+        try:
+            async with self.Session() as session:
+                feedback = (
+                    await session.scalars(
+                        select(RunFeedbackModel).filter_by(
+                            feedback_id=feedback_id,
+                            organization_id=organization_id,
+                        )
+                    )
+                ).first()
+
+                if not feedback:
+                    return None
+
+                if feedback_value is not None:
+                    feedback.feedback_value = feedback_value
+                if categories is not None:
+                    feedback.categories = categories
+                if comment is not None:
+                    feedback.comment = comment
+
+                await session.commit()
+                await session.refresh(feedback)
+                return feedback
+        except SQLAlchemyError:
+            LOG.error("SQLAlchemyError updating run feedback", exc_info=True)
+            raise
+        except Exception:
+            LOG.error("UnexpectedError updating run feedback", exc_info=True)
             raise

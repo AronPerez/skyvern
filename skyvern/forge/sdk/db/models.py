@@ -40,6 +40,7 @@ from skyvern.forge.sdk.db.id import (
     generate_organization_bitwarden_collection_id,
     generate_output_parameter_id,
     generate_persistent_browser_session_id,
+    generate_run_feedback_id,
     generate_script_block_id,
     generate_script_file_id,
     generate_script_id,
@@ -1121,6 +1122,37 @@ class WorkflowCopilotChatMessageModel(Base):
     sender = Column(String, nullable=False)
     content = Column(UnicodeText, nullable=False)
     global_llm_context = Column(UnicodeText, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    modified_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+
+class RunFeedbackModel(Base):
+    __tablename__ = "run_feedback"
+    __table_args__ = (Index("idx_run_feedback_org_created", "organization_id", "created_at"),)
+
+    feedback_id = Column(String, primary_key=True, default=generate_run_feedback_id)
+    organization_id = Column(String, ForeignKey("organizations.organization_id"), nullable=False, index=True)
+
+    # Support both run types - one of these will be set
+    workflow_run_id = Column(String, nullable=True, index=True)
+    task_id = Column(String, nullable=True, index=True)
+
+    # Feedback value: 1 = thumbs up, -1 = thumbs down
+    feedback_value = Column(Integer, nullable=False)
+
+    # Structured categories (for thumbs down)
+    categories = Column(sqlalchemy.dialects.postgresql.ARRAY(String), nullable=True)
+
+    # Free-text feedback
+    comment = Column(UnicodeText, nullable=True)
+
+    created_by_user_id = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     modified_at = Column(

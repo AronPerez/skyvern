@@ -30,6 +30,7 @@ import { CodeEditor } from "@/routes/workflows/components/CodeEditor";
 import { WorkflowApiResponse } from "@/routes/workflows/types/workflowTypes";
 import { runsApiBaseUrl } from "@/util/env";
 import { ApiWebhookActionsMenu } from "@/components/ApiWebhookActionsMenu";
+import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { WebhookReplayDialog } from "@/components/WebhookReplayDialog";
 import { type ApiCommandOptions } from "@/util/apiCommands";
 import { buildTaskRunPayload } from "@/util/taskRunPayload";
@@ -207,7 +208,14 @@ function TaskDetails() {
             {taskIsLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              task && <StatusBadge status={task.status} />
+              task && (
+                <>
+                  <StatusBadge status={task.status} />
+                  {taskHasTerminalState && (
+                    <FeedbackButtons runId={taskId} disabled={taskIsLoading} />
+                  )}
+                </>
+              )
             )}
           </div>
           <div className="flex items-center gap-2">
