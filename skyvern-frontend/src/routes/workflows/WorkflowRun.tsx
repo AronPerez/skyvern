@@ -52,6 +52,7 @@ import { constructCacheKeyValue } from "@/routes/workflows/editor/utils";
 import { useCacheKeyValuesQuery } from "@/routes/workflows/hooks/useCacheKeyValuesQuery";
 import { WorkflowRunStatusAlert } from "@/routes/workflows/workflowRun/WorkflowRunStatusAlert";
 import { WorkflowRunVerificationCodeForm } from "@/routes/workflows/workflowRun/WorkflowRunVerificationCodeForm";
+import { TwoFARequestingBanner } from "@/components/TwoFARequestingBanner";
 
 function WorkflowRun() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -507,6 +508,30 @@ function WorkflowRun() {
         </div>
       )}
       {workflowFailureReason}
+      {workflowRun && (
+        <TwoFARequestingBanner
+          workflowRunId={workflowRun.workflow_run_id}
+          workflowId={workflowRun.workflow_id}
+          taskId={workflowRun.task_v2?.task_id ?? null}
+          totpVerificationUrl={
+            workflowRun.totp_verification_url ??
+            workflow?.totp_verification_url ??
+            null
+          }
+          totpIdentifier={
+            workflowRun.totp_identifier ?? workflow?.totp_identifier ?? null
+          }
+          waitingForVerificationCode={
+            workflowRun.waiting_for_verification_code ?? false
+          }
+          verificationCodeIdentifier={
+            workflowRun.verification_code_identifier ?? null
+          }
+          verificationCodePollingStartedAt={
+            workflowRun.verification_code_polling_started_at ?? null
+          }
+        />
+      )}
       {!isEmbedded && (
         <div className="flex items-center justify-between">
           <SwitchBarNavigation options={switchBarOptions} />

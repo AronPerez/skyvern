@@ -99,6 +99,18 @@ const useNewRunsUrl = true as const;
 const enable2faNotifications =
   import.meta.env.VITE_ENABLE_2FA_NOTIFICATIONS?.toLowerCase() === "true";
 
+// 2FA manual fallback timeout in seconds (default: 60)
+const twoFaManualFallbackTimeoutSecs: number = (() => {
+  const envValue = import.meta.env.VITE_2FA_MANUAL_FALLBACK_TIMEOUT_SECS;
+  if (typeof envValue === "string") {
+    const parsed = parseInt(envValue, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return 60;
+})();
+
 export {
   apiBaseUrl,
   runsApiBaseUrl,
@@ -113,4 +125,5 @@ export {
   clearRuntimeApiKey,
   useNewRunsUrl,
   enable2faNotifications,
+  twoFaManualFallbackTimeoutSecs,
 };

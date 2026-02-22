@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LockClosedIcon, ClockIcon } from "@radix-ui/react-icons";
+import { LockClosedIcon, ClockIcon, ReloadIcon } from "@radix-ui/react-icons";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,12 @@ type VerificationCodeBannerProps = {
   defaultWorkflowId?: string | null;
   defaultTaskId?: string | null;
   onCodeSent?: () => void;
+  /** Override the default "{label} needs 2FA" description */
+  descriptionNode?: React.ReactNode;
+  /** Show a spinning icon instead of lock (automated polling state) */
+  showSpinner?: boolean;
+  /** Show the "Enter Code" button (default: true) */
+  showManualEntry?: boolean;
 };
 
 function VerificationCodeBanner({
@@ -35,6 +41,9 @@ function VerificationCodeBanner({
   defaultWorkflowId,
   defaultTaskId,
   onCodeSent,
+  descriptionNode,
+  showSpinner,
+  showManualEntry = true,
 }: VerificationCodeBannerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { timeRemaining, isTimeCritical, isTimedOut } =
@@ -58,9 +67,17 @@ function VerificationCodeBanner({
       {/* Slim persistent banner — Figma Option C */}
       <div className="flex items-center justify-between border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <LockClosedIcon className="h-3.5 w-3.5 flex-shrink-0 text-amber-400" />
+          {showSpinner ? (
+            <ReloadIcon className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-amber-400" />
+          ) : (
+            <LockClosedIcon className="h-3.5 w-3.5 flex-shrink-0 text-amber-400" />
+          )}
           <p className="truncate text-xs text-slate-200">
-            <span className="text-slate-100">{label}</span> needs 2FA
+            {descriptionNode ?? (
+              <>
+                <span className="text-slate-100">{label}</span> needs 2FA
+              </>
+            )}
           </p>
           {timeRemaining !== null && (
             <span
@@ -73,18 +90,20 @@ function VerificationCodeBanner({
             </span>
           )}
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
-          {isTimedOut && (
-            <span className="text-xs text-red-300">Timed out</span>
-          )}
-          <button
-            type="button"
-            onClick={() => setDialogOpen(true)}
-            className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/30"
-          >
-            Enter Code
-          </button>
-        </div>
+        {showManualEntry && (
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {isTimedOut && (
+              <span className="text-xs text-red-300">Timed out</span>
+            )}
+            <button
+              type="button"
+              onClick={() => setDialogOpen(true)}
+              className="rounded bg-amber-500/20 px-2 py-1 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/30"
+            >
+              Enter Code
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Dialog with PushTotpCodeForm */}
