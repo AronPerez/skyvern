@@ -54,7 +54,15 @@ function useVerificationCodeAlert({
       return;
     }
 
-    const startTime = new Date(pollingStartedAt).getTime();
+    let normalizedTimestamp = pollingStartedAt;
+    if (
+      !pollingStartedAt.endsWith("Z") &&
+      !pollingStartedAt.includes("+") &&
+      !pollingStartedAt.includes("-", 10)
+    ) {
+      normalizedTimestamp = pollingStartedAt + "Z";
+    }
+    const startTime = new Date(normalizedTimestamp).getTime();
     const timeoutMs = VERIFICATION_TIMEOUT_MINS * 60 * TIMER_TICK_MS;
 
     const updateTimer = () => {
