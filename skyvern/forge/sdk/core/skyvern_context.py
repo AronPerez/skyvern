@@ -89,6 +89,19 @@ class SkyvernContext:
         if task_id in self.totp_codes:
             self.totp_codes.pop(task_id)
 
+    def clear_totp_cache(self, task_id: str) -> None:
+        """
+        Clear cached TOTP code for a task when it's rejected.
+
+        This should be called when a TOTP code is detected as invalid/expired
+        (e.g., "Invalid code" error message) to force fetching a fresh code.
+        """
+        self.pop_totp_code(task_id)
+        # Also clear multi-field TOTP cache key
+        cache_key = f"{task_id}_totp_cache"
+        if cache_key in self.totp_codes:
+            self.totp_codes.pop(cache_key)
+
     def add_magic_link_page(self, task_id: str, page: Page) -> None:
         self.magic_link_pages[task_id] = page
 

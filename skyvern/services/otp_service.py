@@ -1,4 +1,5 @@
 import asyncio
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -113,6 +114,87 @@ def try_generate_totp_from_credential(workflow_run_id: str | None) -> OTPValue |
                         exc_info=True,
                     )
     return None
+
+
+# Error patterns that indicate TOTP code rejection (SKY-48)
+# These patterns should trigger clearing the cached code and fetching a fresh one
+TOTP_ERROR_PATTERNS = [
+    r"invalid\s*code",
+    r"incorrect\s*(verification)?\s*code",
+    r"code\s*(you\s*entered\s*)?(is\s*)?(invalid|incorrect|wrong|expired)",
+    r"verification\s*failed",
+    r"try\s*again",
+    r"2fa\s*(authentication)?\s*failed",
+    r"code\s*has\s*expired",
+]
+
+TOTP_ERROR_REGEX = re.compile("|".join(TOTP_ERROR_PATTERNS), re.IGNORECASE)
+
+
+def detect_totp_error_in_text(text: str) -> bool:
+    """
+    Detect if text contains TOTP rejection error patterns.
+
+    Args:
+        text: Page content or error message to analyze
+
+    Returns:
+        True if text contains a TOTP error pattern, False otherwise
+    """
+    return bool(TOTP_ERROR_REGEX.search(text))
+
+
+def handle_totp_rejection(
+    task_id: str,
+    error_message: str,
+    retry_count: int,
+) -> bool:
+    """
+    Handle TOTP code rejection by clearing cache and checking retry limit.
+
+    This function should be called when a TOTP code is detected as invalid/expired
+    after form submission. It:
+    1. Checks if the error message indicates a TOTP rejection
+    2. Clears the cached TOTP code for the task
+    3. Checks if retry limit has been exceeded
+
+    Args:
+        task_id: The task ID whose TOTP code was rejected
+        error_message: The error message from the page (e.g., "Invalid code")
+        retry_count: Current number of TOTP retry attempts
+
+    Returns:
+        True if should retry with fresh code, False if retry limit exceeded
+    """
+    from skyvern.forge.sdk.core import skyvern_context
+
+    # Check if the error indicates TOTP rejection
+    if not detect_totp_error_in_text(error_message):
+        return False
+
+    LOG.info(
+        "TOTP code rejected, clearing cache",
+        task_id=task_id,
+        retry_count=retry_count,
+        error_message=error_message[:100],
+    )
+
+    # Clear the cached TOTP code
+    ctx = skyvern_context.current()
+    if ctx:
+        ctx.clear_totp_cache(task_id)
+
+    # Check retry limit
+    if retry_count >= settings.TOTP_RETRY_LIMIT:
+        LOG.warning(
+            "TOTP retry limit exceeded",
+            task_id=task_id,
+            retry_count=retry_count,
+            retry_limit=settings.TOTP_RETRY_LIMIT,
+        )
+        return False
+
+    return True
 
 
 async def poll_otp_value(
