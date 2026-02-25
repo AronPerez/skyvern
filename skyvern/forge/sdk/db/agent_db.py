@@ -33,6 +33,20 @@ from skyvern.forge.sdk.artifact.models import Artifact, ArtifactType
 from skyvern.forge.sdk.db.base_alchemy_db import BaseAlchemyDB, db_operation, read_retry
 from skyvern.forge.sdk.db.enums import OrganizationAuthTokenType, TaskType
 from skyvern.forge.sdk.db.exceptions import NotFoundError
+from skyvern.forge.sdk.db.mixins import (
+    ArtifactMixin,
+    BrowserSessionMixin,
+    CredentialMixin,
+    DebugMixin,
+    FolderMixin,
+    ObserverMixin,
+    OrganizationMixin,
+    OTPMixin,
+    ScriptMixin,
+    TaskMixin,
+    WorkflowMixin,
+    WorkflowRunMixin,
+)
 from skyvern.forge.sdk.db.models import (
     ActionModel,
     AISuggestionModel,
@@ -196,7 +210,21 @@ elif "postgresql+asyncpg" in settings.DATABASE_STRING:
     DB_CONNECT_ARGS = {"server_settings": {"statement_timeout": str(settings.DATABASE_STATEMENT_TIMEOUT_MS)}}
 
 
-class AgentDB(BaseAlchemyDB):
+class AgentDB(
+    TaskMixin,
+    ArtifactMixin,
+    WorkflowMixin,
+    WorkflowRunMixin,
+    OrganizationMixin,
+    BrowserSessionMixin,
+    CredentialMixin,
+    ScriptMixin,
+    ObserverMixin,
+    OTPMixin,
+    DebugMixin,
+    FolderMixin,
+    BaseAlchemyDB,
+):
     def __init__(self, database_string: str, debug_enabled: bool = False, db_engine: AsyncEngine | None = None) -> None:
         super().__init__(
             db_engine
