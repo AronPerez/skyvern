@@ -19,6 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
 
+from skyvern.forge.sdk.db._soft_delete import SoftDeleteMixin
 from skyvern.forge.sdk.db.enums import TaskType
 from skyvern.forge.sdk.db.id import (
     generate_action_id,
@@ -249,7 +250,7 @@ class FolderModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class WorkflowModel(Base):
+class WorkflowModel(SoftDeleteMixin, Base):
     __tablename__ = "workflows"
     __table_args__ = (
         UniqueConstraint(
@@ -294,7 +295,6 @@ class WorkflowModel(Base):
         onupdate=datetime.datetime.utcnow,
         nullable=False,
     )
-    deleted_at = Column(DateTime, nullable=True)
 
     workflow_permanent_id = Column(String, nullable=False, default=generate_workflow_permanent_id, index=True)
     version = Column(Integer, default=1, nullable=False)
