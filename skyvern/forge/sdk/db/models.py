@@ -173,7 +173,7 @@ class OrganizationModel(Base):
     )
 
 
-class OrganizationAuthTokenModel(Base):
+class OrganizationAuthTokenModel(SoftDeleteMixin, Base):
     __tablename__ = "organization_auth_tokens"
 
     id = Column(
@@ -228,7 +228,7 @@ class ArtifactModel(Base):
     )
 
 
-class FolderModel(Base):
+class FolderModel(SoftDeleteMixin, Base):
     __tablename__ = "folders"
     __table_args__ = (
         Index("folder_organization_id_idx", "organization_id"),
@@ -301,7 +301,7 @@ class WorkflowModel(SoftDeleteMixin, Base):
     is_saved_task = Column(Boolean, default=False, nullable=False)
 
 
-class WorkflowTemplateModel(Base):
+class WorkflowTemplateModel(SoftDeleteMixin, Base):
     """
     Tracks which workflows are marked as templates.
     Keyed by workflow_permanent_id (not versioned workflow_id) because
@@ -371,7 +371,7 @@ class WorkflowRunModel(Base):
     )
 
 
-class WorkflowParameterModel(Base):
+class WorkflowParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "workflow_parameters"
 
     workflow_parameter_id = Column(String, primary_key=True, default=generate_workflow_parameter_id)
@@ -390,7 +390,7 @@ class WorkflowParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class OutputParameterModel(Base):
+class OutputParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "output_parameters"
 
     output_parameter_id = Column(String, primary_key=True, default=generate_output_parameter_id)
@@ -407,7 +407,7 @@ class OutputParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class AWSSecretParameterModel(Base):
+class AWSSecretParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "aws_secret_parameters"
 
     aws_secret_parameter_id = Column(String, primary_key=True, default=generate_aws_secret_parameter_id)
@@ -425,7 +425,7 @@ class AWSSecretParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class BitwardenLoginCredentialParameterModel(Base):
+class BitwardenLoginCredentialParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "bitwarden_login_credential_parameters"
 
     bitwarden_login_credential_parameter_id = Column(
@@ -453,7 +453,7 @@ class BitwardenLoginCredentialParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class BitwardenSensitiveInformationParameterModel(Base):
+class BitwardenSensitiveInformationParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "bitwarden_sensitive_information_parameters"
 
     bitwarden_sensitive_information_parameter_id = Column(
@@ -482,7 +482,7 @@ class BitwardenSensitiveInformationParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class BitwardenCreditCardDataParameterModel(Base):
+class BitwardenCreditCardDataParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "bitwarden_credit_card_data_parameters"
 
     bitwarden_credit_card_data_parameter_id = Column(
@@ -504,7 +504,7 @@ class BitwardenCreditCardDataParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class CredentialParameterModel(Base):
+class CredentialParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "credential_parameters"
 
     credential_parameter_id = Column(String, primary_key=True, default=generate_credential_parameter_id)
@@ -519,7 +519,7 @@ class CredentialParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class OnePasswordCredentialParameterModel(Base):
+class OnePasswordCredentialParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "onepassword_credential_parameters"
 
     onepassword_credential_parameter_id = Column(
@@ -541,7 +541,7 @@ class OnePasswordCredentialParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class AzureVaultCredentialParameterModel(Base):
+class AzureVaultCredentialParameterModel(SoftDeleteMixin, Base):
     __tablename__ = "azure_vault_credential_parameters"
 
     azure_vault_credential_parameter_id = Column(
@@ -831,7 +831,7 @@ class ThoughtModel(Base):
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
 
-class PersistentBrowserSessionModel(Base):
+class PersistentBrowserSessionModel(SoftDeleteMixin, Base):
     __tablename__ = "persistent_browser_sessions"
     __table_args__ = (
         Index(
@@ -874,7 +874,7 @@ class PersistentBrowserSessionModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class BrowserProfileModel(Base):
+class BrowserProfileModel(SoftDeleteMixin, Base):
     __tablename__ = "browser_profiles"
     __table_args__ = (
         Index("idx_browser_profiles_org", "organization_id"),
@@ -917,7 +917,7 @@ class TaskRunModel(Base):
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
 
-class OrganizationBitwardenCollectionModel(Base):
+class OrganizationBitwardenCollectionModel(SoftDeleteMixin, Base):
     __tablename__ = "organization_bitwarden_collections"
 
     organization_bitwarden_collection_id = Column(
@@ -932,7 +932,7 @@ class OrganizationBitwardenCollectionModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class CredentialModel(Base):
+class CredentialModel(SoftDeleteMixin, Base):
     __tablename__ = "credentials"
 
     credential_id = Column(String, primary_key=True, default=generate_credential_id)
@@ -956,7 +956,7 @@ class CredentialModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class DebugSessionModel(Base):
+class DebugSessionModel(SoftDeleteMixin, Base):
     __tablename__ = "debug_sessions"
 
     debug_session_id = Column(String, primary_key=True, default=generate_debug_session_id)
@@ -992,7 +992,7 @@ class BlockRunModel(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
 
-class ScriptModel(Base):
+class ScriptModel(SoftDeleteMixin, Base):
     __tablename__ = "scripts"
     __table_args__ = (
         Index("script_org_created_at_index", "organization_id", "created_at"),
@@ -1016,7 +1016,7 @@ class ScriptModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class ScriptFileModel(Base):
+class ScriptFileModel(SoftDeleteMixin, Base):
     __tablename__ = "script_files"
     __table_args__ = (
         Index("file_script_path_index", "script_revision_id", "file_path"),
@@ -1045,7 +1045,7 @@ class ScriptFileModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class WorkflowScriptModel(Base):
+class WorkflowScriptModel(SoftDeleteMixin, Base):
     __tablename__ = "workflow_scripts"
     __table_args__ = (
         Index("idx_workflow_scripts_org_created", "organization_id", "created_at"),
@@ -1074,7 +1074,7 @@ class WorkflowScriptModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class ScriptBlockModel(Base):
+class ScriptBlockModel(SoftDeleteMixin, Base):
     __tablename__ = "script_blocks"
     __table_args__ = (
         UniqueConstraint(
