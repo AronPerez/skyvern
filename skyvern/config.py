@@ -181,6 +181,8 @@ class Settings(BaseSettings):
     CHECK_USER_GOAL_LLM_KEY: str | None = None
     AUTO_COMPLETION_LLM_KEY: str | None = None
     SCRIPT_GENERATION_LLM_KEY: str | None = None
+    SCRIPT_REVIEWER_LLM_KEY: str | None = None
+    ADAPTIVE_SCRIPT_GEN_LLM_KEY: str | None = None
     # COMMON
     LLM_CONFIG_TIMEOUT: int = 300
     LLM_CONFIG_MAX_TOKENS: int = 4096
@@ -427,12 +429,12 @@ class Settings(BaseSettings):
     in minutes.
     """
 
-    DEBUG_SESSION_TIMEOUT_THRESHOLD_MINUTES: int = 5
+    DEBUG_SESSION_TIMEOUT_THRESHOLD_MINUTES: int = 10
     """
-    If there are `DEBUG_SESSION_TIMEOUT_THRESHOLD_MINUTES` or more minutes left
-    in the persistent browser session (`started_at` + `timeout_minutes`), then
-    the `timeout_minutes` of the persistent browser session can be extended.
-    Otherwise we'll consider the persistent browser session to be expired.
+    Threshold for browser session timeout extension.
+    - V1 (OSS): extends when remaining >= threshold, raises if below (expired).
+    - V2 (cloud): extends when remaining <= threshold, no-ops if above (plenty of time).
+    Set to 10 minutes so that a 5-minute renewal loop gets 2+ attempts before expiry.
     """
 
     ENCRYPTOR_AES_SECRET_KEY: str = "fillmein"
@@ -450,7 +452,7 @@ class Settings(BaseSettings):
     # OpenTelemetry Settings
     OTEL_ENABLED: bool = False
     OTEL_SERVICE_NAME: str = "skyvern"
-    OTEL_EXPORTER_OTLP_ENDPOINT: str = "http://localhost:4317"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
     OTEL_METRICS_ENABLED: bool = True
     OTEL_LOGS_ENABLED: bool = True
     OTEL_EXPORTER_INSECURE: bool = True
@@ -469,9 +471,8 @@ class Settings(BaseSettings):
                 "llm_key": "VERTEX_GEMINI_2.5_FLASH",
                 "label": "Gemini 2.5 Flash",
             },
-            "gemini-3-pro-preview": {"llm_key": "VERTEX_GEMINI_3.0_PRO", "label": "Gemini 3 Pro"},
+            "gemini-3-pro-preview": {"llm_key": "VERTEX_GEMINI_3_PRO", "label": "Gemini 3 Pro (Latest)"},
             "gemini-3.0-flash": {"llm_key": "VERTEX_GEMINI_3.0_FLASH", "label": "Gemini 3 Flash"},
-            "gemini-3.1-pro-preview": {"llm_key": "VERTEX_GEMINI_3.1_PRO", "label": "Gemini 3.1 Pro"},
             "mercury-2": {"llm_key": "INCEPTION_MERCURY_2", "label": "Inception Mercury 2"},
             "gemini-2.5-flash-lite": {
                 "llm_key": "VERTEX_GEMINI_2.5_FLASH_LITE",

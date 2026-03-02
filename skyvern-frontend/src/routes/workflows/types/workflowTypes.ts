@@ -212,7 +212,8 @@ export type WorkflowBlock =
   | Taskv2Block
   | URLBlock
   | HttpRequestBlock
-  | PrintPageBlock;
+  | PrintPageBlock
+  | WorkflowTriggerBlock;
 
 export const WorkflowBlockTypes = {
   Task: "task",
@@ -238,6 +239,7 @@ export const WorkflowBlockTypes = {
   URL: "goto_url",
   HttpRequest: "http_request",
   PrintPage: "print_page",
+  WorkflowTrigger: "workflow_trigger",
 } as const;
 
 // all of them
@@ -559,6 +561,16 @@ export type PrintPageBlock = WorkflowBlockBase & {
   parameters: Array<WorkflowParameter>;
 };
 
+export type WorkflowTriggerBlock = WorkflowBlockBase & {
+  block_type: "workflow_trigger";
+  workflow_permanent_id: string;
+  payload: Record<string, unknown> | null;
+  wait_for_completion: boolean;
+  browser_session_id: string | null;
+  use_parent_browser_session: boolean;
+  parameters: Array<WorkflowParameter>;
+};
+
 export type WorkflowDefinition = {
   version?: number | null;
   parameters: Array<Parameter>;
@@ -588,9 +600,10 @@ export type WorkflowApiResponse = {
   created_at: string;
   modified_at: string;
   deleted_at: string | null;
-  run_with: string | null; // 'agent' or 'code'
+  run_with: string | null; // 'agent', 'code', or 'code_v2'
   cache_key: string | null;
   ai_fallback: boolean | null;
+  adaptive_caching: boolean | null;
   run_sequentially: boolean | null;
   sequential_key: string | null;
   folder_id: string | null;
